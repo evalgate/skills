@@ -1,0 +1,12 @@
+{
+	"mcpServers": {
+		"evalgate-product": {
+			"type": "http",
+			"url": "https://www.evalgate.com/api/mcp"
+		},
+		"evalgate-docs": {
+			"type": "http",
+			"url": "https://www.evalgate.com/api/mcp/docs"
+		}
+	}
+}

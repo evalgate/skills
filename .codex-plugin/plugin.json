@@ -1,0 +1,33 @@
+{
+	"name": "evalgate",
+	"version": "1.0.0",
+	"description": "Public EvalGate workflows for local regression gates, scoped cloud evidence, traces, and repository questions.",
+	"author": {
+		"name": "EvalGate",
+		"email": "team@evalgate.com",
+		"url": "https://evalgate.com"
+	},
+	"homepage": "https://evalgate.com/docs/sdk/cli",
+	"license": "MIT",
+	"keywords": ["evals", "regression", "observability", "agents", "testing"],
+	"skills": "./skills",
+	"mcpServers": "./.mcp.json",
+	"interface": {
+		"displayName": "EvalGate",
+		"shortDescription": "Run evidence-backed AI evaluation workflows.",
+		"longDescription": "Use EvalGate to discover evaluation files, run local regression gates, collect bounded traces, and ask evidence-backed questions about a connected repository. Cloud workflows require an explicitly provisioned scoped API key.",
+		"developerName": "EvalGate",
+		"category": "Developer Tools",
+		"capabilities": [
+			"Local evaluation",
+			"Regression gates",
+			"Trace collection",
+			"Repository intelligence"
+		],
+		"websiteURL": "https://evalgate.com",
+		"privacyPolicyURL": "https://evalgate.com/privacy",
+		"termsOfServiceURL": "https://evalgate.com/terms",
+		"brandColor": "#2563EB",
+		"defaultPrompt": "Run the safest EvalGate workflow for this repository."
+	}
+}
