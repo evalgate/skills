@@ -27,6 +27,26 @@ const expectedSkills = [
 ];
 const failures = [];
 
+const agentInstructions = readFileSync(resolve(root, "AGENTS.md"), "utf8");
+const readme = readFileSync(resolve(root, "README.md"), "utf8");
+for (const requiredInstruction of [
+	"skills/evaluate-ai-change/SKILL.md",
+	"decision-contract.schema.json",
+	"customer prompts",
+	"organization-scoped credential",
+	"not_measured",
+]) {
+	if (!agentInstructions.includes(requiredInstruction)) {
+		failures.push(`AGENTS.md omits ${requiredInstruction}`);
+	}
+}
+if (!readme.includes("[`AGENTS.md`]")) {
+	failures.push("README.md does not link to AGENTS.md");
+}
+if (/github\.com\/evalgate\/ai-evaluation-platform/iu.test(agentInstructions)) {
+	failures.push("AGENTS.md exposes the private application repository");
+}
+
 const skillNames = readdirSync(skillsRoot, { withFileTypes: true })
 	.filter((entry) => entry.isDirectory())
 	.map((entry) => entry.name)
