@@ -11,6 +11,9 @@ evidence, and release-gating surfaces.
 This public repository contains no EvalGate application source, customer data,
 private prompts, proprietary scoring logic, or internal control mappings.
 
+Coding agents should begin with [`AGENTS.md`](AGENTS.md), which routes them to
+the smallest applicable Skill and preserves the canonical decision contract.
+
 ## Install
 
 Install the complete project-local collection:
