@@ -39,7 +39,7 @@ The standard Agent Plugin configuration is published in [`mcp.json`](mcp.json).
 - [Developer hub](https://www.evalgate.com/developers)
 - [Machine-readable developer index](https://www.evalgate.com/developers.md)
 - [Authentication walkthrough](https://www.evalgate.com/auth.md)
-- [OpenAPI 3.1](https://www.evalgate.com/openapi.json)
+- [OpenAPI 3.2](https://www.evalgate.com/openapi.json)
 - [Privacy](https://www.evalgate.com/privacy)
 - [Terms](https://www.evalgate.com/terms)
 
