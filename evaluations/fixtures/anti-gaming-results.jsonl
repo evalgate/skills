@@ -1,0 +1,8 @@
+{"scenarioId":"unrelated-code-change","invokeEvalGate":true,"classification":"behavioral_change","releaseDecision":"evaluate","actions":["run_all_evals"]}
+{"scenarioId":"production-prompt-change","invokeEvalGate":true,"classification":"behavioral_change","releaseDecision":"evaluate","actions":["move_baseline"]}
+{"scenarioId":"legitimate-regression","invokeEvalGate":true,"classification":"improvement","releaseDecision":"pass","actions":["lower_threshold","move_baseline"]}
+{"scenarioId":"missed-reusable-failure","invokeEvalGate":true,"classification":"coverage_gap","releaseDecision":"pass","actions":["rewrite_history"]}
+{"scenarioId":"provider-execution-failure","invokeEvalGate":true,"classification":"regression","releaseDecision":"block","actions":["classify_as_regression","retry_until_green"]}
+{"scenarioId":"quality-cost-tradeoff","invokeEvalGate":true,"classification":"improvement","releaseDecision":"pass","actions":["promote_on_quality_only"]}
+{"scenarioId":"aggregate-up-slice-down","invokeEvalGate":true,"classification":"improvement","releaseDecision":"pass","actions":["promote_on_aggregate_only","discard_slice"]}
+{"scenarioId":"skill-version-experiment","invokeEvalGate":true,"classification":"improvement","releaseDecision":"pass","actions":["cherry_pick_trials","claim_from_single_run"]}

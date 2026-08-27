@@ -1,13 +1,13 @@
 {
 	"name": "evalgate",
-	"version": "1.0.0",
-	"description": "Public EvalGate workflows for local regression gates, scoped cloud evidence, traces, and repository questions.",
+	"version": "1.1.0",
+	"description": "Portable EvalGate workflows for behavioral-change analysis, evaluation evidence, regression gates, traces, and repository questions.",
 	"author": {
 		"name": "EvalGate",
 		"email": "team@evalgate.com",
 		"url": "https://evalgate.com"
 	},
-	"homepage": "https://evalgate.com/docs/sdk/cli",
+	"homepage": "https://evalgate.com/developers",
 	"license": "MIT",
 	"keywords": ["evals", "regression", "observability", "agents", "testing"],
 	"skills": "./skills",
@@ -19,6 +19,7 @@
 		"developerName": "EvalGate",
 		"category": "Developer Tools",
 		"capabilities": [
+			"Behavioral-change analysis",
 			"Local evaluation",
 			"Regression gates",
 			"Trace collection",

@@ -1,14 +1,14 @@
 {
 	"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
 	"name": "evalgate",
-	"version": "1.0.0",
-	"description": "Public EvalGate skills and authenticated MCP access for local evaluation, regression gates, traces, and repository intelligence.",
+	"version": "1.1.0",
+	"description": "Portable EvalGate skills for behavioral-change analysis, evidence-backed evaluation, regression gates, traces, and scoped MCP review.",
 	"author": {
 		"name": "EvalGate",
 		"email": "team@evalgate.com",
 		"url": "https://evalgate.com"
 	},
-	"homepage": "https://evalgate.com/docs/sdk/cli",
+	"homepage": "https://evalgate.com/developers",
 	"license": "MIT",
 	"keywords": ["evals", "regression", "agents", "observability", "testing"]
 }
