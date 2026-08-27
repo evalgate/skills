@@ -115,6 +115,10 @@ release decision, quality/cost/latency/reliability evidence, artifacts,
 remaining uncertainty, and release status. Separate product regressions from
 invalid or incomplete execution. When returning JSON, conform to
 [decision-contract.schema.json](assets/decision-contract.schema.json).
+The required `evidenceSummary` covers quality, protected slices, reliability,
+latency, and cost. Use `status: "not_measured"` with a concrete reason when a
+dimension has no valid evidence; never estimate, infer, or fabricate a metric
+just to complete the object.
 
 Use [troubleshooting.md](references/troubleshooting.md) when the workflow cannot
 produce valid evidence. Never claim safety or release readiness for an

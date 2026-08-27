@@ -9,6 +9,7 @@ import {
 import { dirname, resolve } from "node:path";
 import {
 	classifications,
+	evidenceDimensions,
 	releaseDecisionByClassification,
 	releaseDecisions,
 	validateDecisionContract,
@@ -77,8 +78,8 @@ const scenarios = readFileSync(
 	.filter(Boolean)
 	.map((line) => JSON.parse(line));
 
-if (scenarios.length !== 10) failures.push(`expected 10 scenarios, got ${scenarios.length}`);
-if (new Set(scenarios.map((scenario) => scenario.scenarioId)).size !== 10) {
+if (scenarios.length !== 11) failures.push(`expected 11 scenarios, got ${scenarios.length}`);
+if (new Set(scenarios.map((scenario) => scenario.scenarioId)).size !== 11) {
 	failures.push("scenario IDs must be unique");
 }
 const coveredClassifications = [
@@ -106,6 +107,15 @@ if (
 }
 
 for (const scenario of scenarios) {
+	const evidenceSummary = Object.fromEntries(
+		evidenceDimensions.map((dimension) => [
+			dimension,
+			{
+				status: "not_measured",
+				reason: "Distribution validation does not execute the scenario.",
+			},
+		]),
+	);
 	const contractFailures = validateDecisionContract(
 		{
 			scenarioId: scenario.scenarioId,
@@ -113,12 +123,38 @@ for (const scenario of scenarios) {
 			classification: scenario.expected.classification,
 			releaseDecision: scenario.expected.releaseDecision,
 			actions: scenario.expected.requiredActions,
+			evidenceSummary,
 		},
 		{ requireScenarioId: true },
 	);
 	for (const failure of contractFailures) {
 		failures.push(`${scenario.scenarioId}: ${failure}`);
 	}
+	for (const [dimension, expectation] of Object.entries(
+		scenario.expected.evidenceExpectations ?? {},
+	)) {
+		if (!evidenceDimensions.includes(dimension)) {
+			failures.push(`${scenario.scenarioId}: unknown evidence dimension ${dimension}`);
+		}
+		if (!["measured", "not_measured"].includes(expectation.status)) {
+			failures.push(`${scenario.scenarioId}: invalid evidence status for ${dimension}`);
+		}
+		if (
+			expectation.requiredMeasurements !== undefined &&
+			(!Array.isArray(expectation.requiredMeasurements) ||
+				expectation.requiredMeasurements.some(
+					(name) => typeof name !== "string" || name.length === 0,
+				))
+		) {
+			failures.push(
+				`${scenario.scenarioId}: invalid requiredMeasurements for ${dimension}`,
+			);
+		}
+	}
+}
+
+if (!scenarios.some((scenario) => scenario.scenarioId === "mixed-bug-sweep")) {
+	failures.push("scenario coverage omits mixed-bug-sweep");
 }
 
 const primarySkill = readFileSync(
