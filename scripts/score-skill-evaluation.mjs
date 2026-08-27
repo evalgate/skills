@@ -2,6 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { validateDecisionContract } from "./evaluate-ai-change-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const scenarioPath = resolve(
@@ -42,6 +43,13 @@ for (const scenario of scenarios) {
 	if (!result) {
 		failures.push({ scenarioId: scenario.scenarioId, reason: "missing_result" });
 		continue;
+	}
+	for (const failure of validateDecisionContract(result, { requireScenarioId: true })) {
+		failures.push({
+			scenarioId: scenario.scenarioId,
+			reason: "invalid_contract",
+			detail: failure,
+		});
 	}
 	const expected = scenario.expected;
 	for (const field of ["invokeEvalGate", "classification", "releaseDecision"]) {

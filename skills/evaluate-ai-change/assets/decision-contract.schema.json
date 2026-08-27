@@ -1,0 +1,88 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://www.evalgate.com/schemas/evaluate-ai-change-decision.schema.json",
+	"title": "EvalGate evaluate-ai-change decision",
+	"description": "Canonical machine-readable decision emitted by the evaluate-ai-change Agent Skill.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"invokeEvalGate",
+		"classification",
+		"releaseDecision",
+		"actions"
+	],
+	"properties": {
+		"scenarioId": {
+			"type": "string",
+			"minLength": 1
+		},
+		"invokeEvalGate": {
+			"type": "boolean"
+		},
+		"classification": {
+			"$ref": "#/$defs/classification"
+		},
+		"releaseDecision": {
+			"$ref": "#/$defs/releaseDecision"
+		},
+		"actions": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"minLength": 1
+			},
+			"uniqueItems": true
+		}
+	},
+	"$defs": {
+		"classification": {
+			"type": "string",
+			"enum": [
+				"not_applicable",
+				"behavioral_change",
+				"experiment",
+				"coverage_gap",
+				"infrastructure_failure",
+				"regression",
+				"improvement",
+				"tradeoff",
+				"inconclusive"
+			]
+		},
+		"releaseDecision": {
+			"type": "string",
+			"enum": [
+				"ordinary_tests",
+				"evaluate",
+				"compare",
+				"block_until_covered",
+				"inconclusive",
+				"block",
+				"promote",
+				"policy_review"
+			]
+		}
+	},
+	"x-releaseDecisionByClassification": {
+		"not_applicable": "ordinary_tests",
+		"behavioral_change": "evaluate",
+		"experiment": "compare",
+		"coverage_gap": "block_until_covered",
+		"infrastructure_failure": "inconclusive",
+		"regression": "block",
+		"improvement": "promote",
+		"tradeoff": "policy_review",
+		"inconclusive": "inconclusive"
+	},
+	"x-invokeEvalGateByClassification": {
+		"not_applicable": false,
+		"behavioral_change": true,
+		"experiment": true,
+		"coverage_gap": true,
+		"infrastructure_failure": true,
+		"regression": true,
+		"improvement": true,
+		"tradeoff": true,
+		"inconclusive": true
+	}
+}
