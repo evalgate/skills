@@ -24,6 +24,12 @@ Reach for this skill when an MCP-capable agent needs EvalGate guidance or attrib
 4. Use the docs server for reference retrieval and cite the returned document identifiers. Use the product server for organization-scoped state and evidence.
 5. Treat `project.plan` as advisory. Use the CLI or web control plane for approved mutations; this plugin does not authorize baseline changes, run starts, credential changes, or pull-request comments.
 
+When MCP evidence informs an AI-change decision, use the primary
+[evaluate-ai-change](../evaluate-ai-change/SKILL.md) workflow and its
+[canonical decision contract](../evaluate-ai-change/references/decision-contract.md).
+MCP tools supply read-only evidence; they do not create a second classification
+enum, derive a release decision, or authorize the resulting action.
+
 ## Expected artifacts
 
 Return the server used, tool name, request status, and evidence/document identifiers. Include organization context only for authenticated product results. Redact bearer tokens, raw customer payloads, and connector secrets from summaries.

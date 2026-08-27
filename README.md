@@ -107,7 +107,9 @@ npm test
   read-only reviewed documentation.
 
 The Agent Plugin configuration is published in [`mcp.json`](mcp.json). Never
-commit credentials into MCP configuration.
+commit credentials into MCP configuration. MCP results are evidence inputs, not
+a separate release-decision format: an agent using them must emit the canonical
+`evaluate-ai-change` classification and derived release decision.
 
 ## Team use
 
