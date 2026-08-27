@@ -22,6 +22,21 @@ Never invent synonyms such as `pass`, `fail`, `hold`, `error`, or `needs_evals`.
 `releaseDecision` is derived from `classification`; do not choose it
 independently. A result is invalid when the values do not match this table.
 
+## Evidence completeness
+
+Every decision includes `evidenceSummary.quality`, `protectedSlices`,
+`reliability`, `latency`, and `cost`. Each dimension is exactly one of:
+
+- `measured`, with a plain-language `summary` and at least one named
+  measurement; or
+- `not_measured`, with a concrete `reason`.
+
+Use `not_measured` when the run did not produce valid evidence for that
+dimension. Do not convert an assumption, estimate, missing value, invalid run,
+or general impression into a measurement. Decision correctness and evidence
+reporting completeness are separate: a correct `regression` classification is
+still an incomplete handoff if measured latency or cost evidence is omitted.
+
 ## Precedence
 
 Choose one classification using this order:
@@ -43,7 +58,41 @@ Choose one classification using this order:
   "invokeEvalGate": true,
   "classification": "regression",
   "releaseDecision": "block",
-  "actions": ["inspect_case_evidence", "fix_implementation"]
+  "actions": ["inspect_case_evidence", "fix_implementation"],
+  "evidenceSummary": {
+    "quality": {
+      "status": "measured",
+      "summary": "Aggregate quality improved, but it does not override the protected-slice failure.",
+      "measurements": [
+        { "name": "aggregate_score", "baseline": 0.82, "candidate": 0.86 }
+      ]
+    },
+    "protectedSlices": {
+      "status": "measured",
+      "summary": "The protected tool-permission slice failed policy.",
+      "measurements": [
+        { "name": "tool_permission", "baseline": 0.96, "candidate": 0.69, "threshold": 0.9, "passed": false }
+      ]
+    },
+    "reliability": {
+      "status": "measured",
+      "summary": "The completed run remained within its timeout policy.",
+      "measurements": [
+        { "name": "provider_timeout_rate", "value": 0.087, "threshold": 0.1, "passed": true }
+      ]
+    },
+    "latency": {
+      "status": "measured",
+      "summary": "Median latency increased.",
+      "measurements": [
+        { "name": "median_latency_change", "delta": 0.2, "unit": "ratio" }
+      ]
+    },
+    "cost": {
+      "status": "not_measured",
+      "reason": "The run did not include attributable token-cost evidence."
+    }
+  }
 }
 ```
 

@@ -2,7 +2,10 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { validateDecisionContract } from "./evaluate-ai-change-contract.mjs";
+import {
+	validateDecisionCore,
+	validateEvidenceSummary,
+} from "./evaluate-ai-change-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const scenarioPath = resolve(
@@ -36,25 +39,40 @@ const scenarios = readJsonLines(scenarioPath);
 const results = new Map(
 	readJsonLines(resultPath).map((result) => [result.scenarioId, result]),
 );
-const failures = [];
+const decisionFailures = [];
+const reportingFailures = [];
 
 for (const scenario of scenarios) {
 	const result = results.get(scenario.scenarioId);
 	if (!result) {
-		failures.push({ scenarioId: scenario.scenarioId, reason: "missing_result" });
+		decisionFailures.push({
+			scenarioId: scenario.scenarioId,
+			reason: "missing_result",
+		});
+		reportingFailures.push({
+			scenarioId: scenario.scenarioId,
+			reason: "missing_result",
+		});
 		continue;
 	}
-	for (const failure of validateDecisionContract(result, { requireScenarioId: true })) {
-		failures.push({
+	for (const failure of validateDecisionCore(result, { requireScenarioId: true })) {
+		decisionFailures.push({
 			scenarioId: scenario.scenarioId,
-			reason: "invalid_contract",
+			reason: "invalid_decision_contract",
+			detail: failure,
+		});
+	}
+	for (const failure of validateEvidenceSummary(result.evidenceSummary)) {
+		reportingFailures.push({
+			scenarioId: scenario.scenarioId,
+			reason: "invalid_evidence_summary",
 			detail: failure,
 		});
 	}
 	const expected = scenario.expected;
 	for (const field of ["invokeEvalGate", "classification", "releaseDecision"]) {
 		if (result[field] !== expected[field]) {
-			failures.push({
+			decisionFailures.push({
 				scenarioId: scenario.scenarioId,
 				reason: `wrong_${field}`,
 				expected: expected[field],
@@ -65,7 +83,7 @@ for (const scenario of scenarios) {
 	const actions = new Set(Array.isArray(result.actions) ? result.actions : []);
 	for (const action of expected.requiredActions) {
 		if (!actions.has(action)) {
-			failures.push({
+			decisionFailures.push({
 				scenarioId: scenario.scenarioId,
 				reason: "missing_required_action",
 				action,
@@ -74,38 +92,80 @@ for (const scenario of scenarios) {
 	}
 	for (const action of expected.prohibitedActions) {
 		if (actions.has(action)) {
-			failures.push({
+			decisionFailures.push({
 				scenarioId: scenario.scenarioId,
 				reason: "prohibited_action",
 				action,
 			});
 		}
 	}
+	for (const [dimensionName, expectation] of Object.entries(
+		expected.evidenceExpectations ?? {},
+	)) {
+		const dimension = result.evidenceSummary?.[dimensionName];
+		if (dimension?.status !== expectation.status) {
+			reportingFailures.push({
+				scenarioId: scenario.scenarioId,
+				reason: "wrong_evidence_status",
+				dimension: dimensionName,
+				expected: expectation.status,
+				actual: dimension?.status,
+			});
+			continue;
+		}
+		const measurementNames = new Set(
+			Array.isArray(dimension.measurements)
+				? dimension.measurements.map((measurement) => measurement.name)
+				: [],
+		);
+		for (const measurementName of expectation.requiredMeasurements ?? []) {
+			if (!measurementNames.has(measurementName)) {
+				reportingFailures.push({
+					scenarioId: scenario.scenarioId,
+					reason: "missing_evidence_measurement",
+					dimension: dimensionName,
+					measurement: measurementName,
+				});
+			}
+		}
+	}
 }
 
 for (const scenarioId of results.keys()) {
 	if (!scenarios.some((scenario) => scenario.scenarioId === scenarioId)) {
-		failures.push({ scenarioId, reason: "unknown_scenario" });
+		decisionFailures.push({ scenarioId, reason: "unknown_scenario" });
+		reportingFailures.push({ scenarioId, reason: "unknown_scenario" });
 	}
 }
 
 const report = {
 	schemaVersion: 1,
 	scenarioCount: scenarios.length,
-	passed: failures.length === 0,
-	failureCount: failures.length,
-	failures,
+	passed: decisionFailures.length === 0 && reportingFailures.length === 0,
+	decisionPassed: decisionFailures.length === 0,
+	reportingPassed: reportingFailures.length === 0,
+	decisionFailureCount: decisionFailures.length,
+	reportingFailureCount: reportingFailures.length,
+	decisionFailures,
+	reportingFailures,
 };
 
 if (jsonOutput) {
 	console.log(JSON.stringify(report));
 } else if (report.passed) {
-	console.log(`PASS: ${report.scenarioCount} skill scenarios satisfied`);
+	console.log(
+		`PASS: ${report.scenarioCount} skill scenarios satisfied decision and reporting contracts`,
+	);
 } else {
 	console.error(
-		`FAIL: ${report.failureCount} contract violations across ${report.scenarioCount} scenarios`,
+		`FAIL: ${report.decisionFailureCount} decision and ${report.reportingFailureCount} reporting violations across ${report.scenarioCount} scenarios`,
 	);
-	for (const failure of failures) console.error(JSON.stringify(failure));
+	for (const failure of decisionFailures) {
+		console.error(JSON.stringify({ score: "decision", ...failure }));
+	}
+	for (const failure of reportingFailures) {
+		console.error(JSON.stringify({ score: "reporting", ...failure }));
+	}
 }
 
 process.exit(report.passed ? 0 : 1);

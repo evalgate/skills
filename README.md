@@ -77,7 +77,7 @@ anonymous and read-only.
 
 ## Evaluate the skill
 
-`evaluations/evaluate-ai-change.scenarios.jsonl` defines ten provider-neutral
+`evaluations/evaluate-ai-change.scenarios.jsonl` defines eleven provider-neutral
 decision scenarios. Run an agent with and without the skill, serialize its
 decisions to JSONL, then score them:
 
@@ -85,13 +85,17 @@ decisions to JSONL, then score them:
 node scripts/score-skill-evaluation.mjs path/to/results.jsonl --json
 ```
 
-The scorer checks activation, primary classification, release decision,
-required actions, prohibited anti-gaming behavior, and the canonical decision
-enum. Unknown labels and contradictory classification/release combinations fail
-before behavioral scoring. It does not pretend to run an agent or replace
-EvalGate's runtime evidence. Compare Skill versions as immutable experiment
-candidates and retain the agent/model, trials, dataset, tokens, cost, latency,
-and result provenance.
+The scorer reports decision correctness and evidence-reporting completeness as
+separate results. It checks activation, primary classification, release
+decision, required actions, prohibited anti-gaming behavior, the canonical
+decision enum, and explicit coverage of quality, protected slices, reliability,
+latency, and cost. Unknown labels and contradictory classification/release
+combinations fail decision scoring; missing measured evidence fails reporting
+scoring. `not_measured` is valid only with a reason, so agents can stay complete
+without fabricating metrics. The scorer does not pretend to run an agent or
+replace EvalGate's runtime evidence. Compare Skill versions as immutable
+experiment candidates and retain the agent/model, trials, dataset, tokens,
+cost, latency, and result provenance.
 
 Validate the distribution and positive/negative fixtures:
 

@@ -9,7 +9,8 @@
 		"invokeEvalGate",
 		"classification",
 		"releaseDecision",
-		"actions"
+		"actions",
+		"evidenceSummary"
 	],
 	"properties": {
 		"scenarioId": {
@@ -32,9 +33,120 @@
 				"minLength": 1
 			},
 			"uniqueItems": true
+		},
+		"evidenceSummary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"quality",
+				"protectedSlices",
+				"reliability",
+				"latency",
+				"cost"
+			],
+			"properties": {
+				"quality": {
+					"$ref": "#/$defs/evidenceDimension"
+				},
+				"protectedSlices": {
+					"$ref": "#/$defs/evidenceDimension"
+				},
+				"reliability": {
+					"$ref": "#/$defs/evidenceDimension"
+				},
+				"latency": {
+					"$ref": "#/$defs/evidenceDimension"
+				},
+				"cost": {
+					"$ref": "#/$defs/evidenceDimension"
+				}
+			}
 		}
 	},
 	"$defs": {
+		"measurement": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name"],
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 1
+				},
+				"baseline": {
+					"type": ["number", "string"]
+				},
+				"candidate": {
+					"type": ["number", "string"]
+				},
+				"delta": {
+					"type": ["number", "string"]
+				},
+				"value": {
+					"type": ["number", "string"]
+				},
+				"unit": {
+					"type": "string",
+					"minLength": 1
+				},
+				"threshold": {
+					"type": ["number", "string"]
+				},
+				"passed": {
+					"type": "boolean"
+				},
+				"source": {
+					"type": "string",
+					"minLength": 1
+				}
+			},
+			"anyOf": [
+				{ "required": ["baseline"] },
+				{ "required": ["candidate"] },
+				{ "required": ["delta"] },
+				{ "required": ["value"] },
+				{ "required": ["passed"] }
+			]
+		},
+		"evidenceDimension": {
+			"oneOf": [
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["status", "summary", "measurements"],
+					"properties": {
+						"status": {
+							"const": "measured"
+						},
+						"summary": {
+							"type": "string",
+							"minLength": 1
+						},
+						"measurements": {
+							"type": "array",
+							"items": {
+								"$ref": "#/$defs/measurement"
+							},
+							"minItems": 1
+						}
+					}
+				},
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["status", "reason"],
+					"properties": {
+						"status": {
+							"const": "not_measured"
+						},
+						"reason": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				}
+			]
+		},
 		"classification": {
 			"type": "string",
 			"enum": [
