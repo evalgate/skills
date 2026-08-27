@@ -63,17 +63,15 @@ organization-scoped credential. Never request, print, or commit its value.
 ## Evaluate and classify
 
 Run the smallest sufficient suite, then inspect case-level and slice-level
-evidence rather than only the aggregate score. Classify the result as exactly
-one primary outcome:
+evidence rather than only the aggregate score. Classify the result with exactly
+one canonical value: `not_applicable`, `behavioral_change`, `experiment`,
+`coverage_gap`, `infrastructure_failure`, `regression`, `improvement`,
+`tradeoff`, or `inconclusive`.
 
-- `regression`: behavior materially worsened or a protected slice failed;
-- `improvement`: the intended behavior improved without an unacceptable
-  regression or tradeoff;
-- `inconclusive`: evidence, sample size, judge agreement, or tradeoff policy is
-  insufficient for promotion;
-- `infrastructure_failure`: execution, provider, data, timeout, or evaluator
-  failure prevented a behavioral conclusion; or
-- `not_applicable`: the inspected change cannot affect observable AI behavior.
+Read [decision-contract.md](references/decision-contract.md) before serializing
+or persisting a result. It defines classification precedence and the only valid
+`classification` → `invokeEvalGate` → `releaseDecision` combinations. Never
+invent a synonym or select the release decision independently.
 
 Read [regression-analysis.md](references/regression-analysis.md) for failure and
 slice analysis, [experiment-analysis.md](references/experiment-analysis.md) for
@@ -112,9 +110,11 @@ required handoff.
 ## Report the decision
 
 Return the repository revision, behavioral impact, scope selected, commands
-executed, cases and slices exercised, primary classification, quality/cost/
-latency/reliability evidence, artifacts, remaining uncertainty, and release
-status. Separate product regressions from invalid or incomplete execution.
+executed, cases and slices exercised, canonical classification and derived
+release decision, quality/cost/latency/reliability evidence, artifacts,
+remaining uncertainty, and release status. Separate product regressions from
+invalid or incomplete execution. When returning JSON, conform to
+[decision-contract.schema.json](assets/decision-contract.schema.json).
 
 Use [troubleshooting.md](references/troubleshooting.md) when the workflow cannot
 produce valid evidence. Never claim safety or release readiness for an

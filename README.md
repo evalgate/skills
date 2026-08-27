@@ -77,7 +77,7 @@ anonymous and read-only.
 
 ## Evaluate the skill
 
-`evaluations/evaluate-ai-change.scenarios.jsonl` defines eight provider-neutral
+`evaluations/evaluate-ai-change.scenarios.jsonl` defines ten provider-neutral
 decision scenarios. Run an agent with and without the skill, serialize its
 decisions to JSONL, then score them:
 
@@ -86,10 +86,12 @@ node scripts/score-skill-evaluation.mjs path/to/results.jsonl --json
 ```
 
 The scorer checks activation, primary classification, release decision,
-required actions, and prohibited anti-gaming behavior. It does not pretend to
-run an agent or replace EvalGate's runtime evidence. Compare Skill versions as
-immutable experiment candidates and retain the agent/model, trials, dataset,
-tokens, cost, latency, and result provenance.
+required actions, prohibited anti-gaming behavior, and the canonical decision
+enum. Unknown labels and contradictory classification/release combinations fail
+before behavioral scoring. It does not pretend to run an agent or replace
+EvalGate's runtime evidence. Compare Skill versions as immutable experiment
+candidates and retain the agent/model, trials, dataset, tokens, cost, latency,
+and result provenance.
 
 Validate the distribution and positive/negative fixtures:
 
@@ -105,7 +107,9 @@ npm test
   read-only reviewed documentation.
 
 The Agent Plugin configuration is published in [`mcp.json`](mcp.json). Never
-commit credentials into MCP configuration.
+commit credentials into MCP configuration. MCP results are evidence inputs, not
+a separate release-decision format: an agent using them must emit the canonical
+`evaluate-ai-change` classification and derived release decision.
 
 ## Team use
 

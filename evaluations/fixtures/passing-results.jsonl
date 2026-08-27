@@ -6,3 +6,5 @@
 {"scenarioId":"quality-cost-tradeoff","invokeEvalGate":true,"classification":"tradeoff","releaseDecision":"policy_review","actions":["report_quality_delta","report_cost_delta","report_latency_delta","apply_team_policy"]}
 {"scenarioId":"aggregate-up-slice-down","invokeEvalGate":true,"classification":"regression","releaseDecision":"block","actions":["inspect_slice_evidence","surface_aggregate_conflict","fix_or_review_policy"]}
 {"scenarioId":"skill-version-experiment","invokeEvalGate":true,"classification":"experiment","releaseDecision":"compare","actions":["freeze_candidate_identity","preserve_provenance","run_repeated_trials","compare_quality_cost_latency","inspect_slices"]}
+{"scenarioId":"validated-improvement","invokeEvalGate":true,"classification":"improvement","releaseDecision":"promote","actions":["preserve_release_evidence","report_policy_compliance"]}
+{"scenarioId":"valid-but-insufficient-evidence","invokeEvalGate":true,"classification":"inconclusive","releaseDecision":"inconclusive","actions":["report_evidence_limit","identify_next_evidence"]}
