@@ -17,4 +17,6 @@ jobs:
         with:
           node-version: 24
       - run: npm test
+      - run: npm run validate
+      - run: npm run test:behavior
       - run: npx --yes skills@1.5.18 add . --list

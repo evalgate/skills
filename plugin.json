@@ -1,7 +1,7 @@
 {
 	"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
 	"name": "evalgate",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"description": "Portable EvalGate skills for behavioral-change analysis, evidence-backed evaluation, regression gates, traces, and scoped MCP review.",
 	"author": {
 		"name": "EvalGate",

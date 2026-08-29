@@ -1,6 +1,6 @@
 {
 	"name": "evalgate",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"description": "Portable EvalGate workflows for behavioral-change analysis, evaluation evidence, regression gates, traces, and repository questions.",
 	"author": {
 		"name": "EvalGate",

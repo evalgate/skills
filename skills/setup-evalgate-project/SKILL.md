@@ -17,12 +17,35 @@ Use this when a repository needs a first evaluation workflow, a portable CI gate
 
 ## Safe workflow
 
-1. Inspect the repository and run `npx @evalgate/sdk understand --format json` (or `evalgate understand --format json`) to preview product context. Treat inferred risks as hypotheses.
-2. Confirm a key is configured without printing it: `evalgate auth status`. If absent, use the RFC 8628 flow in the public `evaluate-ai-change` skill or ask an organization administrator for a least-privilege install key.
-3. Review the plan, then run `npx @evalgate/sdk init --format json`. It is a preview and does not write files or run tests.
-4. After a human approves the generated file list, apply with `npx @evalgate/sdk init --apply`.
-5. Run the project’s evaluation command and accept a baseline only when evidence is non-empty and passing: `npx @evalgate/sdk baseline update`.
-6. Run `npx @evalgate/sdk gate --format json` locally. Add the documented GitHub Actions workflow only after reviewing the diff.
+1. Inspect the repository and discover the installed runtime before choosing
+   commands: `npx @evalgate/sdk capabilities --format json` and
+   `npx @evalgate/sdk --help`. Then run
+   `npx @evalgate/sdk understand --format json` (or the equivalent command
+   advertised by the installed runtime) to preview product context. Treat
+   inferred risks as hypotheses.
+2. Read the canonical [authentication and credential handoff reference](../evaluate-ai-change/references/authentication-and-credential-handoff.md).
+   Confirm a key is configured without printing it: `evalgate auth status`. If
+   absent, use an RFC 8628 or JSON handoff only when the published runtime and
+   docs advertise that exact flow, or ask an organization administrator for a
+   least-privilege install key.
+3. Before selecting an evaluation runner, inspect `package.json` scripts,
+   `Makefile`/task files, CI workflows, and repository docs. Prefer the
+   runtime-advertised handler and an existing project command. If a custom
+   runner is required, record its exact argv, inputs, output artifact, network
+   behavior, and owner; an unknown or ambiguous runner is **not configured**
+   and must fail closed rather than being guessed into a baseline.
+   When multiple supported package roots exist, compose one reviewed plan for
+   the roots that own the behavior. If handlers conflict in the same directory,
+   stop and require explicit selection (for example, the runtime's reviewed
+   `--package-handler` override) instead of guessing which command to run.
+4. Review the plan, then run `npx @evalgate/sdk init`. It is a
+   preview and does not write files or run tests.
+5. After a human approves the generated file list, apply with
+   `npx @evalgate/sdk init --apply`.
+6. Run the project’s evaluation command and accept a baseline only when
+   evidence is non-empty and passing: `npx @evalgate/sdk baseline update`.
+7. Run `npx @evalgate/sdk gate --format json` locally. Add the documented
+   GitHub Actions workflow only after reviewing the diff.
 
 ## Expected artifacts
 
@@ -34,4 +57,9 @@ Do not fabricate a baseline, upload source or traces, install packs, or change C
 
 ## Validation
 
-Confirm that `npx @evalgate/sdk gate --format json` exits successfully, the baseline is non-empty, and the generated files are inside the repository root. If the project has no suitable evaluation command, report that limitation instead of claiming setup is complete.
+Confirm that the selected command is advertised by the installed capability
+map, `npx @evalgate/sdk gate --format json` exits successfully, the baseline is
+non-empty, and generated files are inside the repository root. If the project
+has no suitable evaluation command—or its custom runner cannot be identified
+with a reproducible contract—report that limitation and leave setup incomplete
+instead of claiming success.
