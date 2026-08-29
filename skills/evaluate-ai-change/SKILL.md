@@ -57,8 +57,82 @@ a canonical EvalGate workflow.
   [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md).
 
 Prefer `npx @evalgate/sdk capabilities --format json` and the published CLI help
-over remembered commands. Hosted actions require an attributable,
-organization-scoped credential. Never request, print, or commit its value.
+over remembered commands. When hosted access is needed, read the canonical
+[authentication and credential handoff reference](references/authentication-and-credential-handoff.md).
+Hosted actions require an attributable, organization-scoped credential. Never
+request, print, or commit its value.
+
+## EvalGate 3.8 evidence triage
+
+Before executing a release-bearing workflow, record the installed SDK version,
+the capability contract, and the exact command help. The capability map and
+machine-readable report are authoritative; do not invent provider flags,
+numeric exit meanings, or hosted routes from an older SDK. In the published
+3.8 CLI, `gate` is deterministic/offline by default and `--allow-network` is
+the explicit opt-in for provider-backed project evaluators. Use `--dry-run`
+only as a preview, never as release evidence.
+
+Classify the evidence mode separately from the product verdict:
+
+- `offline`: deterministic local checks only;
+- `network`: a provider-backed execution actually ran;
+- `mixed`: both kinds of evidence are present;
+- `cache_only`: an eligible cached observation was reused without new model
+  inference.
+
+For every provider-backed result, preserve the requested and effective
+provider/model identity, execution state, calibration state, cache lineage,
+case and slice counts, and any request or run IDs. The 3.8 provider vocabulary
+distinguishes `executed`, `cache_reused`, `deferred_by_policy`,
+`provider_unavailable`, `model_retired`, `authentication_failed`,
+`timed_out`, `malformed_response`, `policy_blocked`, and other states. Apply
+the report's `requiredNow`, `freshCacheAllowed`, `deferredAllowed`, and fresh
+calibration policy rather than guessing:
+
+- an unavailable provider means quality is **not determined** and readiness is
+  blocked or inconclusive, not a product regression and not a pass;
+- a deferred obligation remains unresolved and is not PASS;
+- admission policy fields `requiredNow`/`required_now`,
+  `freshCacheAllowed`/`fresh_cache_allowed`, and
+  `deferredAllowed`/`deferred_allowed` (and, when present,
+  `requireFreshCalibration`) govern whether evidence is eligible now;
+- when fresh calibration is required, `stale` or `not_comparable` calibration
+  cannot establish current provider trust;
+- a cache hit is usable only when canonical identity and freshness are eligible
+  under the active policy. Retain original execution/model lineage and report
+  zero new inference cost; never call it an independent trial;
+- a fallback provider/model is valid only when explicitly authorized and fully
+  recorded. Never silently substitute one.
+
+For a judge request, verify the operational path in the evidence rather than
+accepting a cache design claim: canonical request identity → authorized cache
+lookup → eligible fresh hit (reuse original lineage, record `cache_reused`, and
+incur `$0` new inference) **or** Model Gateway execution → provider/model call
+and cost ledger → cache write. A missing identity, authorization, freshness,
+lineage, cost, or write receipt leaves the run incomplete and therefore
+inconclusive; it is not proof that the cache is operational.
+
+Release evidence has independent dimensions. Inspect the machine report for
+verdict, gate mode, case/slice outcomes, `decisionPassed`, `reportingPassed`,
+`evidencePassed`, `evidenceMode`, provider admission, trajectory evidence, and
+`releaseReady`. A passing score, a zero process exit, or a final answer alone
+does not establish release readiness. Active golden agent cases require a
+complete trajectory observation for the tool path, order, arguments, and
+outcomes; missing or truncated observations fail closed, and an unsafe
+intermediate tool action remains a failure even when the final answer is right.
+
+For red-team or framework-control work, use the hosted capability and scoped
+API only when discovered in the installed contract. Keep attack evidence and
+benign utility evidence distinct. A framework/control reference records
+provenance and a reviewed mapping rationale; it does not prove implementation,
+compliance, certification, endorsement, partnership, or affiliation.
+
+In the published 3.8 capability map, red-team is a cloud capability at the
+`/red-team` workspace. The documented CLI/API discovery entry is
+`evalgate api get_red_team_workspace --format json`; campaign, run, finding,
+promotion, and signed-report operations are exposed by the returned contract,
+not by an invented local command. Missing observations or a provider failure
+remain incomplete evidence, not a passing control result.
 
 ## Evaluate and classify
 
@@ -110,10 +184,11 @@ required handoff.
 ## Report the decision
 
 Return the repository revision, behavioral impact, scope selected, commands
-executed, cases and slices exercised, canonical classification and derived
-release decision, quality/cost/latency/reliability evidence, artifacts,
-remaining uncertainty, and release status. Separate product regressions from
-invalid or incomplete execution. When returning JSON, conform to
+executed, cases and slices exercised, evidence mode, provider/cache/trajectory
+state, canonical classification and derived release decision,
+quality/cost/latency/reliability evidence, artifacts, remaining uncertainty,
+and release readiness. Separate product regressions from invalid or incomplete
+execution. When returning JSON, conform to
 [decision-contract.schema.json](assets/decision-contract.schema.json).
 The required `evidenceSummary` covers quality, protected slices, reliability,
 latency, and cost. Use `status: "not_measured"` with a concrete reason when a

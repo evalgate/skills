@@ -47,6 +47,21 @@ if (/github\.com\/evalgate\/ai-evaluation-platform/iu.test(agentInstructions)) {
 	failures.push("AGENTS.md exposes the private application repository");
 }
 
+for (const requiredReadmeText of [
+	"https://github.com/evalgate/skills",
+	"npx skills add evalgate/skills",
+	"--list",
+	"skills/evaluate-ai-change/SKILL.md",
+	"EvalGate SDK 3.8.x",
+	"There is no npm package named `@evalgate/skills`",
+	"https://evalgate.com",
+	"https://www.evalgate.com/docs/sdk/cli",
+]) {
+	if (!readme.includes(requiredReadmeText)) {
+		failures.push(`README.md omits ${requiredReadmeText}`);
+	}
+}
+
 const skillNames = readdirSync(skillsRoot, { withFileTypes: true })
 	.filter((entry) => entry.isDirectory())
 	.map((entry) => entry.name)
@@ -82,12 +97,27 @@ for (const skillName of skillNames) {
 	}
 }
 
-for (const manifestPath of ["plugin.json", "mcp.json", ".mcp.json"]) {
+for (const manifestPath of ["plugin.json", "mcp.json", ".mcp.json", ".codex-plugin/plugin.json", "package.json"]) {
 	try {
 		JSON.parse(readFileSync(resolve(root, manifestPath), "utf8"));
 	} catch (error) {
 		failures.push(`${manifestPath}: ${error.message}`);
 	}
+}
+
+const packageManifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const pluginManifest = JSON.parse(readFileSync(resolve(root, "plugin.json"), "utf8"));
+const codexPluginManifest = JSON.parse(
+	readFileSync(resolve(root, ".codex-plugin/plugin.json"), "utf8"),
+);
+if (!/^1\.2\./u.test(packageManifest.version ?? "")) {
+	failures.push(`package.json must carry independent Skills 1.2.x version, got ${packageManifest.version}`);
+}
+if (
+	pluginManifest.version !== packageManifest.version ||
+	codexPluginManifest.version !== packageManifest.version
+) {
+	failures.push("plugin manifests must agree on the independent Skills distribution version");
 }
 
 const scenarios = readFileSync(
@@ -98,8 +128,8 @@ const scenarios = readFileSync(
 	.filter(Boolean)
 	.map((line) => JSON.parse(line));
 
-if (scenarios.length !== 11) failures.push(`expected 11 scenarios, got ${scenarios.length}`);
-if (new Set(scenarios.map((scenario) => scenario.scenarioId)).size !== 11) {
+if (scenarios.length !== 30) failures.push(`expected 30 scenarios, got ${scenarios.length}`);
+if (new Set(scenarios.map((scenario) => scenario.scenarioId)).size !== 30) {
 	failures.push("scenario IDs must be unique");
 }
 const coveredClassifications = [
@@ -127,6 +157,28 @@ if (
 }
 
 for (const scenario of scenarios) {
+	if (typeof scenario.scenarioId !== "string" || scenario.scenarioId.length === 0) {
+		failures.push("every scenario must have a non-empty scenarioId");
+	}
+	if (typeof scenario.prompt !== "string" || scenario.prompt.length === 0) {
+		failures.push(`${scenario.scenarioId ?? "unknown"}: prompt must be a non-empty string`);
+	}
+	if (!scenario.expected || typeof scenario.expected !== "object") {
+		failures.push(`${scenario.scenarioId ?? "unknown"}: expected decision object is required`);
+		continue;
+	}
+	for (const actionField of ["requiredActions", "prohibitedActions"]) {
+		if (
+			!Array.isArray(scenario.expected[actionField]) ||
+			scenario.expected[actionField].some(
+				(action) => typeof action !== "string" || action.length === 0,
+			) ||
+			new Set(scenario.expected[actionField]).size !==
+				scenario.expected[actionField].length
+		) {
+			failures.push(`${scenario.scenarioId}: ${actionField} must be unique non-empty strings`);
+		}
+	}
 	const evidenceSummary = Object.fromEntries(
 		evidenceDimensions.map((dimension) => [
 			dimension,
@@ -171,19 +223,145 @@ for (const scenario of scenarios) {
 			);
 		}
 	}
+	const semantic = scenario.expected.semanticExpectations ?? {};
+	for (const action of [
+		...(semantic.requiredActions ?? []),
+		...(semantic.prohibitedActions ?? []),
+	]) {
+		if (typeof action !== "string" || action.length === 0) {
+			failures.push(`${scenario.scenarioId}: semantic actions must be non-empty strings`);
+		}
+	}
+	for (const dimension of semantic.requiredNotMeasured ?? []) {
+		if (!evidenceDimensions.includes(dimension)) {
+			failures.push(`${scenario.scenarioId}: unknown semantic evidence dimension ${dimension}`);
+		}
+	}
+	for (const [dimension, measurementNames] of Object.entries(
+		semantic.requiredMeasurements ?? {},
+	)) {
+		if (!evidenceDimensions.includes(dimension)) {
+			failures.push(`${scenario.scenarioId}: unknown semantic evidence dimension ${dimension}`);
+		}
+		if (
+			!Array.isArray(measurementNames) ||
+			measurementNames.some(
+				(name) => typeof name !== "string" || name.length === 0,
+			)
+		) {
+			failures.push(
+				`${scenario.scenarioId}: semantic requiredMeasurements must contain non-empty names`,
+			);
+		}
+	}
 }
 
 if (!scenarios.some((scenario) => scenario.scenarioId === "mixed-bug-sweep")) {
 	failures.push("scenario coverage omits mixed-bug-sweep");
+}
+for (const letter of "ABCDEFGHIJKLMNOPQRS") {
+	if (!scenarios.some((scenario) => scenario.scenarioId === `adversarial-${letter}-` || scenario.scenarioId.startsWith(`adversarial-${letter}-`))) {
+		failures.push(`scenario coverage omits adversarial scenario ${letter}`);
+	}
+}
+
+const regressionSkill = readFileSync(
+	resolve(skillsRoot, "run-regression-gate/SKILL.md"),
+	"utf8",
+);
+for (const requiredGateText of [
+	"capabilities --format json",
+	"--help",
+	"decisionPassed",
+	"evidencePassed",
+	"releaseReady",
+	"provider_unavailable",
+	"cache_reused",
+	"trajectory",
+	"malformed",
+	"unknown",
+]) {
+	if (!regressionSkill.includes(requiredGateText)) {
+		failures.push(`run-regression-gate omits ${requiredGateText}`);
+	}
+}
+if (/Stable exit codes|\|\s*0\s*\|/iu.test(regressionSkill)) {
+	failures.push("run-regression-gate must not hardcode a stable numeric exit-code table");
+}
+if (!existsSync(resolve(root, "scripts/evaluate-ai-change-harness.mjs"))) {
+	failures.push("behavioral harness is missing");
+}
+if (!existsSync(resolve(root, "evaluations/3.8-convergence-truth-ledger.md"))) {
+	failures.push("3.8 convergence truth ledger is missing");
+}
+const harness = readFileSync(resolve(root, "scripts/evaluate-ai-change-harness.mjs"), "utf8");
+for (const requiredHarnessText of [
+	"contract_fixture",
+	"executed: false",
+	"model_comparison",
+	"compare-providers",
+	"openai",
+	"anthropic",
+	"credential-safe",
+	"not_run",
+	"parsePassed",
+	"provider",
+	"model",
+	"promptHash",
+	"outputHash",
+	"latencyMsByScenario",
+]) {
+	if (!harness.includes(requiredHarnessText)) {
+		failures.push(`behavioral harness omits ${requiredHarnessText}`);
+	}
 }
 
 const primarySkill = readFileSync(
 	resolve(skillsRoot, "evaluate-ai-change/SKILL.md"),
 	"utf8",
 );
+const setupSkill = readFileSync(
+	resolve(skillsRoot, "setup-evalgate-project/SKILL.md"),
+	"utf8",
+);
+for (const requiredSetupText of [
+	"capabilities --format json",
+	"--package-handler",
+	"multiple supported package roots",
+	"fail closed",
+	"custom runner",
+]) {
+	if (!setupSkill.includes(requiredSetupText)) {
+		failures.push(`setup-evalgate-project omits ${requiredSetupText}`);
+	}
+}
+const authReferencePath = resolve(
+	skillsRoot,
+	"evaluate-ai-change/references/authentication-and-credential-handoff.md",
+);
+if (/RFC\s*8628|device(?:-grant|-flow)?/iu.test(setupSkill)) {
+	if (!existsSync(authReferencePath)) {
+		failures.push("setup-evalgate-project references device handoff without a canonical auth reference");
+	} else {
+		const authReference = readFileSync(authReferencePath, "utf8");
+		for (const currentAuthPath of ["/oauth/device/authorization", "/oauth/token", "auth status"]) {
+			if (!authReference.includes(currentAuthPath)) {
+				failures.push(`canonical auth reference omits current path ${currentAuthPath}`);
+			}
+		}
+	}
+}
+if (/3\.7(?:\.|\b)/u.test(readme)) {
+	failures.push("README.md contains a stale SDK 3.7 compatibility claim");
+}
 for (const classification of classifications) {
 	if (!primarySkill.includes(`\`${classification}\``)) {
 		failures.push(`primary skill omits canonical classification ${classification}`);
+	}
+}
+for (const redTeamText of ["/red-team", "get_red_team_workspace", "signed-report"]) {
+	if (!primarySkill.includes(redTeamText)) {
+		failures.push(`primary skill omits red-team contract detail ${redTeamText}`);
 	}
 }
 

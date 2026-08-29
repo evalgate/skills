@@ -11,8 +11,17 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { validateDecisionContract } from "../scripts/evaluate-ai-change-contract.mjs";
+import { scoreSkillEvaluation } from "../scripts/score-skill-evaluation.mjs";
 
 const root = resolve(import.meta.dirname, "..");
+
+const scenarios = readFileSync(
+	resolve(root, "evaluations/evaluate-ai-change.scenarios.jsonl"),
+	"utf8",
+)
+	.trim()
+	.split(/\r?\n/u)
+	.map((line) => JSON.parse(line));
 
 function run(args, expectedStatus) {
 	const result = spawnSync(process.execPath, args, {
@@ -51,6 +60,19 @@ run(
 	],
 	1,
 );
+const fixtureHarness = run(["scripts/evaluate-ai-change-harness.mjs"], 0);
+const fixtureHarnessReport = JSON.parse(fixtureHarness.stdout);
+assert.equal(fixtureHarnessReport.mode, "contract_fixture");
+assert.equal(fixtureHarnessReport.executed, false);
+assert.equal(fixtureHarnessReport.score.scenarioCount, 30);
+assert.equal(fixtureHarnessReport.score.passed, true);
+assert.equal(fixtureHarnessReport.parsePassed, true);
+assert.equal(fixtureHarnessReport.distributionVersion, "1.2.0");
+const liveWithoutAdapter = run(
+	["scripts/evaluate-ai-change-harness.mjs", "--mode", "live"],
+	2,
+);
+assert.equal(JSON.parse(liveWithoutAdapter.stdout).status, "not_run");
 
 assert.deepEqual(
 	validateDecisionContract({
@@ -83,8 +105,179 @@ assert.match(
 	/requires releaseDecision block/u,
 );
 
+const structurallyValidEvidence = {
+	quality: {
+		status: "measured",
+		summary: "Measured quality.",
+		measurements: [{ name: "score", value: 1 }],
+	},
+	protectedSlices: {
+		status: "not_measured",
+		reason: "No protected slice was supplied.",
+	},
+	reliability: {
+		status: "not_measured",
+		reason: "No reliability evidence was supplied.",
+	},
+	latency: {
+		status: "not_measured",
+		reason: "No latency evidence was supplied.",
+	},
+	cost: {
+		status: "not_measured",
+		reason: "No cost evidence was supplied.",
+	},
+};
+const duplicateMeasurementDecision = {
+	scenarioId: "duplicate-evidence",
+	invokeEvalGate: true,
+	classification: "regression",
+	releaseDecision: "block",
+	actions: ["fix_implementation"],
+	evidenceSummary: {
+		...structurallyValidEvidence,
+		quality: {
+			...structurallyValidEvidence.quality,
+			measurements: [
+				{ name: "score", value: 1 },
+				{ name: "score", value: 1 },
+			],
+		},
+	},
+};
+assert.match(
+	validateDecisionContract(duplicateMeasurementDecision).join("\n"),
+	/measurements\[1\]\.name must be unique/u,
+);
+const invalidMeasurementDecision = {
+	...duplicateMeasurementDecision,
+	evidenceSummary: {
+		...structurallyValidEvidence,
+		quality: {
+			...structurallyValidEvidence.quality,
+			measurements: [{ name: "score", value: true }],
+		},
+	},
+};
+assert.match(
+	validateDecisionContract(invalidMeasurementDecision).join("\n"),
+	/\.value must be a number or string/u,
+);
+
+const passingResults = readFileSync(
+	resolve(root, "evaluations/fixtures/passing-results.jsonl"),
+	"utf8",
+)
+	.trim()
+	.split(/\r?\n/u)
+	.map((line) => JSON.parse(line));
+const antiGamingResult = passingResults.find(
+	(result) => result.scenarioId === "unrelated-code-change",
+);
+const universalAntiGamingReport = scoreSkillEvaluation(scenarios, [
+	...passingResults.filter(
+		(result) => result.scenarioId !== "unrelated-code-change",
+	),
+	{
+		...antiGamingResult,
+		actions: [...antiGamingResult.actions, "move_baseline"],
+	},
+]);
+assert.equal(universalAntiGamingReport.decisionPassed, false);
+assert.ok(
+	universalAntiGamingReport.decisionFailures.some(
+		(failure) =>
+			failure.scenarioId === "unrelated-code-change" &&
+			failure.reason === "universal_anti_gaming_action",
+	),
+);
+const duplicateScenarioReport = scoreSkillEvaluation(scenarios, [
+	...passingResults,
+	passingResults[0],
+]);
+assert.ok(
+	duplicateScenarioReport.decisionFailures.some(
+		(failure) =>
+			failure.scenarioId === passingResults[0].scenarioId &&
+			failure.reason === "duplicate_result",
+	),
+);
+const promotedWithoutEvidence = JSON.parse(
+	JSON.stringify(
+		passingResults.find((result) => result.scenarioId === "validated-improvement"),
+	),
+);
+promotedWithoutEvidence.evidenceSummary.quality = {
+	status: "not_measured",
+	reason: "test omission",
+};
+const missingPromotionEvidenceReport = scoreSkillEvaluation(
+	scenarios,
+	passingResults.map((result) =>
+		result.scenarioId === promotedWithoutEvidence.scenarioId
+			? promotedWithoutEvidence
+			: result,
+	),
+);
+assert.ok(
+	missingPromotionEvidenceReport.decisionFailures.some(
+		(failure) => failure.reason === "promote_without_required_evidence",
+	),
+);
+const providerFailurePromotion = JSON.parse(
+	JSON.stringify(
+		passingResults.find((result) => result.scenarioId === "validated-improvement"),
+	),
+);
+providerFailurePromotion.evidenceSummary.reliability.measurements = [
+	{ name: "provider_execution_state", value: "provider_unavailable" },
+];
+const providerPromotionReport = scoreSkillEvaluation(
+	scenarios,
+	passingResults.map((result) =>
+		result.scenarioId === providerFailurePromotion.scenarioId
+			? providerFailurePromotion
+			: result,
+	),
+);
+assert.ok(
+	providerPromotionReport.decisionFailures.some(
+		(failure) => failure.reason === "promote_on_provider_failure",
+	),
+);
+
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "evalgate-skill-score-"));
 try {
+	const fixturePath = resolve(root, "evaluations/fixtures/passing-results.jsonl");
+	const adapterSource = (provider, model) => `
+import { readFileSync } from "node:fs";
+const rows = readFileSync(${JSON.stringify(fixturePath)}, "utf8")
+  .trim().split(/\\r?\\n/u).map((line) => JSON.parse(line));
+const byId = new Map(rows.map((row) => [row.scenarioId, row]));
+export const metadata = ${JSON.stringify({ provider, model })};
+export function evaluateScenario({ scenario }) { return byId.get(scenario.scenarioId); }
+`;
+	const adapterAPath = join(temporaryDirectory, "adapter-a.mjs");
+	const adapterBPath = join(temporaryDirectory, "adapter-b.mjs");
+	writeFileSync(adapterAPath, adapterSource("provider-a", "model-a"));
+	writeFileSync(adapterBPath, adapterSource("provider-b", "model-b"));
+	const comparison = run(
+		[
+			"scripts/evaluate-ai-change-harness.mjs",
+			"--compare",
+			`${adapterAPath},${adapterBPath}`,
+		],
+		0,
+	);
+	const comparisonReport = JSON.parse(comparison.stdout);
+	assert.equal(comparisonReport.mode, "model_comparison");
+	assert.equal(comparisonReport.executed, true);
+	assert.ok(comparisonReport.reports.every((report) => report.parsePassed));
+	assert.deepEqual(
+		comparisonReport.reports.map((report) => report.metadata.provider),
+		["provider-a", "provider-b"],
+	);
+
 	const results = readFileSync(
 		resolve(root, "evaluations/fixtures/passing-results.jsonl"),
 		"utf8",

@@ -122,6 +122,7 @@ export function validateEvidenceSummary(evidenceSummary) {
 				`evidenceSummary.${dimensionName}.measurements must be non-empty`,
 			);
 		} else {
+			const measurementNames = new Set();
 			for (const [index, measurement] of dimension.measurements.entries()) {
 				if (!measurement || typeof measurement !== "object" || Array.isArray(measurement)) {
 					failures.push(
@@ -134,6 +135,12 @@ export function validateEvidenceSummary(evidenceSummary) {
 						`evidenceSummary.${dimensionName}.measurements[${index}].name is required`,
 					);
 				}
+				if (measurementNames.has(measurement.name)) {
+					failures.push(
+						`evidenceSummary.${dimensionName}.measurements[${index}].name must be unique`,
+					);
+				}
+				measurementNames.add(measurement.name);
 				if (
 					!["baseline", "candidate", "delta", "value", "passed"].some(
 						(field) => field in measurement,
@@ -141,6 +148,30 @@ export function validateEvidenceSummary(evidenceSummary) {
 				) {
 					failures.push(
 						`evidenceSummary.${dimensionName}.measurements[${index}] has no measured value`,
+					);
+				}
+				for (const field of ["baseline", "candidate", "delta", "value", "threshold"]) {
+					if (
+						field in measurement &&
+						(typeof measurement[field] !== "number" &&
+							typeof measurement[field] !== "string")
+					) {
+						failures.push(
+							`evidenceSummary.${dimensionName}.measurements[${index}].${field} must be a number or string`,
+						);
+					}
+					if (
+						typeof measurement[field] === "number" &&
+						!Number.isFinite(measurement[field])
+					) {
+						failures.push(
+							`evidenceSummary.${dimensionName}.measurements[${index}].${field} must be finite`,
+						);
+					}
+				}
+				if ("passed" in measurement && typeof measurement.passed !== "boolean") {
+					failures.push(
+						`evidenceSummary.${dimensionName}.measurements[${index}].passed must be a boolean`,
 					);
 				}
 				for (const field of Object.keys(measurement)) {
