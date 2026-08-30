@@ -72,7 +72,16 @@ const liveWithoutAdapter = run(
 	["scripts/evaluate-ai-change-harness.mjs", "--mode", "live"],
 	2,
 );
-assert.equal(JSON.parse(liveWithoutAdapter.stdout).status, "not_run");
+const liveWithoutAdapterReport = JSON.parse(liveWithoutAdapter.stdout);
+assert.equal(liveWithoutAdapterReport.status, "not_run");
+assert.equal(liveWithoutAdapterReport.allowSkip, false);
+const liveWithoutAdapterAllowed = run(
+	["scripts/evaluate-ai-change-harness.mjs", "--mode", "live", "--allow-skip"],
+	0,
+);
+const liveWithoutAdapterAllowedReport = JSON.parse(liveWithoutAdapterAllowed.stdout);
+assert.equal(liveWithoutAdapterAllowedReport.status, "not_run");
+assert.equal(liveWithoutAdapterAllowedReport.allowSkip, true);
 
 assert.deepEqual(
 	validateDecisionContract({
@@ -249,18 +258,37 @@ assert.ok(
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "evalgate-skill-score-"));
 try {
 	const fixturePath = resolve(root, "evaluations/fixtures/passing-results.jsonl");
+	const bundleMarkerPath = join(temporaryDirectory, "bundle-marker.json");
 	const adapterSource = (provider, model) => `
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 const rows = readFileSync(${JSON.stringify(fixturePath)}, "utf8")
   .trim().split(/\\r?\\n/u).map((line) => JSON.parse(line));
 const byId = new Map(rows.map((row) => [row.scenarioId, row]));
 export const metadata = ${JSON.stringify({ provider, model })};
-export function evaluateScenario({ scenario }) { return byId.get(scenario.scenarioId); }
+export function evaluateScenario({ scenario, skill }) {
+  if (!globalThis.__bundleMarkerWritten) {
+    writeFileSync(${JSON.stringify(bundleMarkerPath)}, JSON.stringify({
+      setup: skill.includes("name: setup-evalgate-project"),
+      gate: skill.includes("name: run-regression-gate"),
+      traces: skill.includes("name: collect-agent-traces"),
+      repository: skill.includes("name: ask-repository-question"),
+      mcp: skill.includes("name: use-evalgate-mcp"),
+    }));
+    globalThis.__bundleMarkerWritten = true;
+  }
+  return byId.get(scenario.scenarioId);
+}
+`;
+	const missingCredentialsSource = `
+export const metadata = { provider: "test-provider", model: "test-model", credentialsAvailable: false };
+export function evaluateScenario() { throw new Error("must not execute without credentials"); }
 `;
 	const adapterAPath = join(temporaryDirectory, "adapter-a.mjs");
 	const adapterBPath = join(temporaryDirectory, "adapter-b.mjs");
+	const missingCredentialsPath = join(temporaryDirectory, "missing-credentials.mjs");
 	writeFileSync(adapterAPath, adapterSource("provider-a", "model-a"));
 	writeFileSync(adapterBPath, adapterSource("provider-b", "model-b"));
+	writeFileSync(missingCredentialsPath, missingCredentialsSource);
 	const comparison = run(
 		[
 			"scripts/evaluate-ai-change-harness.mjs",
@@ -277,6 +305,62 @@ export function evaluateScenario({ scenario }) { return byId.get(scenario.scenar
 		comparisonReport.reports.map((report) => report.metadata.provider),
 		["provider-a", "provider-b"],
 	);
+	assert.deepEqual(JSON.parse(readFileSync(bundleMarkerPath, "utf8")), {
+		setup: true,
+		gate: true,
+		traces: true,
+		repository: true,
+		mcp: true,
+	});
+
+	const skippedLive = run(
+		[
+			"scripts/evaluate-ai-change-harness.mjs",
+			"--mode",
+			"live",
+			"--adapter",
+			missingCredentialsPath,
+		],
+		2,
+	);
+	const skippedLiveReport = JSON.parse(skippedLive.stdout);
+	assert.equal(skippedLiveReport.status, "skipped");
+	assert.equal(skippedLiveReport.executed, false);
+	assert.equal(skippedLiveReport.allowSkip, false);
+	const allowedSkippedLive = run(
+		[
+			"scripts/evaluate-ai-change-harness.mjs",
+			"--mode",
+			"live",
+			"--adapter",
+			missingCredentialsPath,
+			"--allow-skip",
+		],
+		0,
+	);
+	assert.equal(JSON.parse(allowedSkippedLive.stdout).allowSkip, true);
+	const skippedComparison = run(
+		[
+			"scripts/evaluate-ai-change-harness.mjs",
+			"--compare",
+			`${missingCredentialsPath},${missingCredentialsPath}`,
+		],
+		2,
+	);
+	const skippedComparisonReport = JSON.parse(skippedComparison.stdout);
+	assert.equal(skippedComparisonReport.executed, false);
+	assert.equal(skippedComparisonReport.status, "skipped");
+	assert.equal(skippedComparisonReport.allowSkip, false);
+	const allowedSkippedComparison = run(
+		[
+			"scripts/evaluate-ai-change-harness.mjs",
+			"--compare",
+			`${missingCredentialsPath},${missingCredentialsPath}`,
+			"--allow-skip",
+		],
+		0,
+	);
+	assert.equal(JSON.parse(allowedSkippedComparison.stdout).allowSkip, true);
 
 	const results = readFileSync(
 		resolve(root, "evaluations/fixtures/passing-results.jsonl"),

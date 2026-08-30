@@ -304,12 +304,19 @@ for (const requiredHarnessText of [
 	"anthropic",
 	"credential-safe",
 	"not_run",
+	"allow-skip",
 	"parsePassed",
 	"provider",
 	"model",
 	"promptHash",
 	"outputHash",
 	"latencyMsByScenario",
+	"Routed Skill:",
+	"setup-evalgate-project/SKILL.md",
+	"run-regression-gate/SKILL.md",
+	"collect-agent-traces/SKILL.md",
+	"ask-repository-question/SKILL.md",
+	"use-evalgate-mcp/SKILL.md",
 ]) {
 	if (!harness.includes(requiredHarnessText)) {
 		failures.push(`behavioral harness omits ${requiredHarnessText}`);
