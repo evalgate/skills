@@ -49,6 +49,13 @@ function skillCommit() {
 
 function assembleSkillBundle() {
 	const primary = readFileSync(skillPath, "utf8");
+	const routedSkillFiles = [
+		"setup-evalgate-project/SKILL.md",
+		"run-regression-gate/SKILL.md",
+		"collect-agent-traces/SKILL.md",
+		"ask-repository-question/SKILL.md",
+		"use-evalgate-mcp/SKILL.md",
+	];
 	const referenceFiles = [
 		"behavioral-change-detection.md",
 		"cost-optimization.md",
@@ -63,6 +70,9 @@ function assembleSkillBundle() {
 	];
 	return [
 		`Primary Skill: ${skillPath}\n${primary}`,
+		...routedSkillFiles.map((file) =>
+			`Routed Skill: ${file}\n${readFileSync(resolve(root, "skills", file), "utf8")}`,
+		),
 		...referenceFiles.map((file) =>
 			`Reference: ${file}\n${readFileSync(resolve(root, "skills/evaluate-ai-change/references", file), "utf8")}`,
 		),
@@ -94,6 +104,7 @@ function parseArgs(argv) {
 		compareProviders: undefined,
 		provider: undefined,
 		model: undefined,
+		allowSkip: false,
 	};
 	for (let index = 0; index < argv.length; index++) {
 		const argument = argv[index];
@@ -135,6 +146,8 @@ function parseArgs(argv) {
 			args.provider = argv[++index];
 		} else if (argument === "--model" && argv[index + 1]) {
 			args.model = argv[++index];
+		} else if (argument === "--allow-skip") {
+			args.allowSkip = true;
 		} else if (argument === "--help" || argument === "-h") {
 			args.help = true;
 		} else {
@@ -160,6 +173,7 @@ Options:
   --adapter <path>        ESM adapter exporting evaluateScenario({ scenario })
   --provider <name>       Built-in provider adapter: openai or anthropic
   --model <id>            Model identifier for a built-in provider adapter
+  --allow-skip             Allow requested live/compare runs with no execution to exit 0
   --compare <a>,<b>       Compare two explicit adapters (optional model/provider comparison)
   --compare-providers <a:m1>,<b:m2>
                          Compare two built-in provider/model pairs (opt-in)
@@ -171,7 +185,8 @@ and require caller-supplied, credential-safe adapters or the explicit built-in
 OpenAI/Anthropic provider adapter (OPENAI_API_KEY or ANTHROPIC_API_KEY).
 Reports include parse status, provider/model,
 Skill revision, hashes, latency, and contract score without raw prompts or
-secrets.`);
+secrets. Requested live/compare execution with no adapter run exits 2 unless
+--allow-skip is explicit.`);
 }
 
 async function loadAdapter(adapterPath) {
@@ -407,6 +422,7 @@ async function run() {
 				mode: "model_comparison",
 				executed: anyExecuted,
 				status: anyExecuted ? "completed" : "skipped",
+				allowSkip: args.allowSkip,
 				parsePassed:
 					anyExecuted &&
 					reports
@@ -420,6 +436,9 @@ async function run() {
 				reports,
 			}),
 		);
+		if (!anyExecuted) {
+			return args.allowSkip ? 0 : 2;
+		}
 		return reports.every(
 			(report) => report.status === "skipped" || report.score?.passed,
 		)
@@ -440,6 +459,7 @@ async function run() {
 				executed: false,
 				parsePassed: false,
 				status: "not_run",
+				allowSkip: args.allowSkip,
 				distributionVersion,
 				skillCommit: skillCommit(),
 				provider: "unknown",
@@ -447,7 +467,7 @@ async function run() {
 				reason: "No adapter or provider was supplied; live mode was not run.",
 			}),
 		);
-		return 2;
+		return args.allowSkip ? 0 : 2;
 	}
 
 	if (adapter.metadata.credentialsAvailable === false) {
@@ -458,13 +478,14 @@ async function run() {
 				executed: false,
 				parsePassed: false,
 				status: "skipped",
+				allowSkip: args.allowSkip,
 				reason: `Missing credentials for ${adapter.metadata.provider}`,
 				distributionVersion,
 				provider: adapter.metadata.provider,
 				model: adapter.metadata.model,
 			}),
 		);
-		return 0;
+		return args.allowSkip ? 0 : 2;
 	}
 	const startedAt = Date.now();
 	const bundle = assembleSkillBundle();

@@ -139,7 +139,9 @@ npm run test:behavior
 The committed behavioral harness is provider-neutral. Its default
 `contract_fixture` mode checks the decision and evidence contract without
 pretending to run an agent or model; an optional live adapter must be supplied
-explicitly and reports whether it actually executed. See the
+explicitly and receives the primary Skill, every routed child Skill, and the
+reviewed references used by that routing path. It reports whether it actually
+executed. See the
 [3.8 convergence truth ledger](evaluations/3.8-convergence-truth-ledger.md) for
 the runtime facts this distribution is allowed to teach.
 
@@ -147,6 +149,7 @@ the runtime facts this distribution is allowed to teach.
 node scripts/evaluate-ai-change-harness.mjs --mode fixture
 node scripts/evaluate-ai-change-harness.mjs --mode live --adapter ./my-adapter.mjs
 node scripts/evaluate-ai-change-harness.mjs --mode live --provider openai --model <model-id>
+node scripts/evaluate-ai-change-harness.mjs --mode live --provider openai --model <model-id> --allow-skip
 node scripts/evaluate-ai-change-harness.mjs --compare ./adapter-a.mjs,./adapter-b.mjs
 node scripts/evaluate-ai-change-harness.mjs --compare-providers openai:<model-a>,anthropic:<model-b>
 ```
@@ -154,8 +157,11 @@ node scripts/evaluate-ai-change-harness.mjs --compare-providers openai:<model-a>
 The comparison form is an optional model/provider experiment boundary: each
 adapter owns its credential-safe invocation and should export provenance such
 as provider and model in `metadata`. Missing credentials or an absent adapter
-is reported as skipped/not run, never as a fabricated pass. Built-in OpenAI and
-Anthropic adapters are opt-in and read only `OPENAI_API_KEY` or
+is reported as skipped/not run, never as a fabricated pass. A requested live or
+comparison run with zero executions exits with status `2`; pass `--allow-skip`
+only when an explicitly allowed skip is desired. It does not turn skipped
+reports into behavioral evidence. Built-in OpenAI and Anthropic adapters are
+opt-in and read only `OPENAI_API_KEY` or
 `ANTHROPIC_API_KEY` from the process environment; they never print or persist
 those values.
 
