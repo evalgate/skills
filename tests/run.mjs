@@ -64,7 +64,12 @@ const fixtureHarness = run(["scripts/evaluate-ai-change-harness.mjs"], 0);
 const fixtureHarnessReport = JSON.parse(fixtureHarness.stdout);
 assert.equal(fixtureHarnessReport.mode, "contract_fixture");
 assert.equal(fixtureHarnessReport.executed, false);
-assert.equal(fixtureHarnessReport.score.scenarioCount, 30);
+// A floor, so adding coverage does not require editing this assertion, while
+// silently losing scenarios still fails.
+assert.ok(
+	fixtureHarnessReport.score.scenarioCount >= 36,
+	`expected at least 36 scenarios, got ${fixtureHarnessReport.score.scenarioCount}`,
+);
 assert.equal(fixtureHarnessReport.score.passed, true);
 assert.equal(fixtureHarnessReport.parsePassed, true);
 assert.equal(fixtureHarnessReport.distributionVersion, "1.2.0");

@@ -128,8 +128,21 @@ const scenarios = readFileSync(
 	.filter(Boolean)
 	.map((line) => JSON.parse(line));
 
-if (scenarios.length !== 30) failures.push(`expected 30 scenarios, got ${scenarios.length}`);
-if (new Set(scenarios.map((scenario) => scenario.scenarioId)).size !== 30) {
+// Scenario floor, not an exact count: adding coverage should never require
+// editing the validator, but silently losing scenarios should still fail.
+const MINIMUM_SCENARIOS = 36;
+if (scenarios.length < MINIMUM_SCENARIOS) {
+	failures.push(
+		`expected at least ${MINIMUM_SCENARIOS} scenarios, got ${scenarios.length}`,
+	);
+}
+// Compared against the row count rather than a literal: the previous form was
+// a second count check wearing a uniqueness label, and would have passed a
+// file with duplicate IDs so long as the unique total happened to match.
+if (
+	new Set(scenarios.map((scenario) => scenario.scenarioId)).size !==
+	scenarios.length
+) {
 	failures.push("scenario IDs must be unique");
 }
 const coveredClassifications = [
@@ -221,6 +234,32 @@ for (const scenario of scenarios) {
 			failures.push(
 				`${scenario.scenarioId}: invalid requiredMeasurements for ${dimension}`,
 			);
+		}
+	}
+	// A routing expectation must name a skill that exists, or the assertion
+	// silently passes forever against a typo.
+	const routing = scenario.expected.routing;
+	if (routing !== undefined) {
+		if (typeof routing !== "object" || routing === null) {
+			failures.push(`${scenario.scenarioId}: routing must be an object`);
+		} else {
+			for (const [field, names] of [
+				["skill", routing.skill ? [routing.skill] : []],
+				["prohibitedSkills", routing.prohibitedSkills ?? []],
+			]) {
+				for (const name of names) {
+					if (!skillNames.includes(name)) {
+						failures.push(
+							`${scenario.scenarioId}: routing.${field} names unknown skill ${name}`,
+						);
+					}
+				}
+			}
+			if (routing.skill && (routing.prohibitedSkills ?? []).includes(routing.skill)) {
+				failures.push(
+					`${scenario.scenarioId}: routing.skill is also listed as prohibited`,
+				);
+			}
 		}
 	}
 	const semantic = scenario.expected.semanticExpectations ?? {};
