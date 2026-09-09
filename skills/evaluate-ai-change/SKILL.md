@@ -45,16 +45,45 @@ a canonical EvalGate workflow.
 
 ## Select the workflow
 
-- No reviewed scaffold: use
-  [setup-evalgate-project](../setup-evalgate-project/SKILL.md).
-- Reviewed baseline or PR gate: use
-  [run-regression-gate](../run-regression-gate/SKILL.md).
-- Missing runtime evidence: use
-  [collect-agent-traces](../collect-agent-traces/SKILL.md).
-- Connected immutable repository question: use
-  [ask-repository-question](../ask-repository-question/SKILL.md).
-- Public docs or scoped read-only product context: use
-  [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md).
+Route on what the caller asked for and what their context already authorizes.
+The absence of a scaffold is not a reason to build one: it usually means
+nobody has looked at the repository yet, and looking is read-only.
+
+Establish two facts first, because they decide the branch:
+
+- **Intent.** Understand something, evaluate a specific change, gate a
+  release, or get reference material? Take the caller's stated intent over an
+  inferred one.
+- **Authorized context.** Is there a connected repository and a scoped
+  credential (`evalgate auth status`), a local checkout, both, or neither?
+  Never assume authority that has not been demonstrated.
+
+Then:
+
+| Intent | Authorized context | Workflow |
+| --- | --- | --- |
+| Understand a system, or scope a change before touching it | Connected repository + read scope | [ask-repository-question](../ask-repository-question/SKILL.md) — read-only, no scaffold, no write access |
+| Understand a system | Local checkout only | `npx @evalgate/sdk understand --format json` |
+| Evaluate a specific change | Reviewed scaffold and baseline exist | [run-regression-gate](../run-regression-gate/SKILL.md) |
+| Evaluate a specific change | No reviewed scaffold, and the caller wants durable coverage | [setup-evalgate-project](../setup-evalgate-project/SKILL.md) |
+| Explain behavior a static read cannot | Runtime evidence missing | [collect-agent-traces](../collect-agent-traces/SKILL.md) |
+| Get reference material or scoped product state | Public docs, or a read scope | [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md) |
+
+Prefer the least authority that answers the question. A connected repository
+with no scaffold and no write access can already reach evidence-linked
+understanding through `evalgate repo`; do not route such a caller into
+scaffolding, baseline acceptance, or a write grant to answer a question that
+read scope already covers.
+
+Escalate only when the intent requires it, and only with the specific
+authority that step needs. Reading does not authorize executing, executing
+does not authorize a patch, a patch does not authorize a push, and a passing
+gate does not authorize a merge. A good result never widens a grant.
+
+When the caller explicitly asks for local, offline, or credential-free work —
+or is working from uncommitted changes, a restricted network, or a sandbox —
+use the local path and do not route them to hosted signup. `evalgate init
+--local` needs no credential and no network.
 
 Prefer `npx @evalgate/sdk capabilities --format json` and the published CLI help
 over remembered commands. When hosted access is needed, read the canonical
@@ -62,14 +91,19 @@ over remembered commands. When hosted access is needed, read the canonical
 Hosted actions require an attributable, organization-scoped credential. Never
 request, print, or commit its value.
 
-## EvalGate 3.8 evidence triage
+## Evidence triage
 
 Before executing a release-bearing workflow, record the installed SDK version,
-the capability contract, and the exact command help. The capability map and
-machine-readable report are authoritative; do not invent provider flags,
-numeric exit meanings, or hosted routes from an older SDK. In the published
-3.8 CLI, `gate` is deterministic/offline by default and `--allow-network` is
-the explicit opt-in for provider-backed project evaluators. Use `--dry-run`
+the capability contract, and the exact command help. Read those from the
+runtime rather than from this document: the capability map and machine-readable
+report are authoritative, and a version pinned in prose goes stale while the
+contract keeps moving. Do not invent provider flags, numeric exit meanings, or
+hosted routes from an older SDK.
+
+The vocabulary below has held from 3.8 through the published 3.10.x contract
+(`2026-09-03`), but verify it against `capabilities --format json` rather than
+assuming it. `gate` is deterministic/offline by default, and `--allow-network`
+is the explicit opt-in for provider-backed project evaluators. Use `--dry-run`
 only as a preview, never as release evidence.
 
 Classify the evidence mode separately from the product verdict:
@@ -82,7 +116,7 @@ Classify the evidence mode separately from the product verdict:
 
 For every provider-backed result, preserve the requested and effective
 provider/model identity, execution state, calibration state, cache lineage,
-case and slice counts, and any request or run IDs. The 3.8 provider vocabulary
+case and slice counts, and any request or run IDs. The provider vocabulary
 distinguishes `executed`, `cache_reused`, `deferred_by_policy`,
 `provider_unavailable`, `model_retired`, `authentication_failed`,
 `timed_out`, `malformed_response`, `policy_blocked`, and other states. Apply
@@ -127,7 +161,7 @@ benign utility evidence distinct. A framework/control reference records
 provenance and a reviewed mapping rationale; it does not prove implementation,
 compliance, certification, endorsement, partnership, or affiliation.
 
-In the published 3.8 capability map, red-team is a cloud capability at the
+In the published capability map, red-team is a cloud capability at the
 `/red-team` workspace. The documented CLI/API discovery entry is
 `evalgate api get_red_team_workspace --format json`; campaign, run, finding,
 promotion, and signed-report operations are exposed by the returned contract,

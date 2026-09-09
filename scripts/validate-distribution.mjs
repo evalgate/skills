@@ -52,7 +52,7 @@ for (const requiredReadmeText of [
 	"npx skills add evalgate/skills",
 	"--list",
 	"skills/evaluate-ai-change/SKILL.md",
-	"EvalGate SDK 3.8.x",
+	"EvalGate SDK 3.10.x",
 	"There is no npm package named `@evalgate/skills`",
 	"https://evalgate.com",
 	"https://www.evalgate.com/docs/sdk/cli",
@@ -358,8 +358,19 @@ if (/RFC\s*8628|device(?:-grant|-flow)?/iu.test(setupSkill)) {
 		}
 	}
 }
-if (/3\.7(?:\.|\b)/u.test(readme)) {
-	failures.push("README.md contains a stale SDK 3.7 compatibility claim");
+// Superseded SDK compatibility claims. The ledger under evaluations/ keeps its
+// own version in its filename and is historical evidence, not a claim about
+// what the distribution supports today -- so only README prose is checked.
+for (const supersededSdkVersion of ["3.7", "3.8", "3.9"]) {
+	const pattern = new RegExp(
+		`SDK ${supersededSdkVersion.replace(".", "\\.")}(?:\\.|x|\\b)`,
+		"u",
+	);
+	if (pattern.test(readme)) {
+		failures.push(
+			`README.md contains a stale SDK ${supersededSdkVersion} compatibility claim`,
+		);
+	}
 }
 for (const classification of classifications) {
 	if (!primarySkill.includes(`\`${classification}\``)) {
