@@ -17,6 +17,16 @@
 			"type": "string",
 			"minLength": 1
 		},
+		"routedSkill": {
+			"type": "string",
+			"minLength": 1,
+			"description": "Skill the request was routed to. Optional; routing is scored separately from the release decision, because a correct decision can still be reached by the wrong route."
+		},
+		"requestedAuthority": {
+			"type": "array",
+			"items": { "type": "string" },
+			"description": "Authority the route asked for. Reading, executing, patching, pushing and merging are separate grants; a route must not assume one it was not given."
+		},
 		"invokeEvalGate": {
 			"type": "boolean"
 		},

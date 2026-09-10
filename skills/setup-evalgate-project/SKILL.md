@@ -7,13 +7,37 @@ description: Set up a repository for its first EvalGate evaluation and regressio
 
 ## When to use
 
-Use this when a repository needs a first evaluation workflow, a portable CI gate, or a clear local/cloud boundary. Repository scaffolding is account-anchored: obtain an organization-scoped install key before applying a local scaffold.
+Use this when a repository needs durable evaluation coverage: a first
+evaluation workflow, a portable CI gate, or an accepted baseline to gate
+against.
+
+Do not use it merely to answer a question about a repository. A connected
+repository with a read scope can reach evidence-linked understanding with no
+scaffold and no write access — see
+[ask-repository-question](../ask-repository-question/SKILL.md). Scaffolding is
+the step that follows a decision to measure something, not the price of
+looking.
+
+## Credential boundary
+
+`evalgate init --local` is credential-free. It writes no hosted state, needs
+no organization-scoped key, and makes no network call; the published runtime
+reports `networkAndCredentials.initApply: "none"` for this path. Use it for
+local, offline, sandboxed, or restricted-network work, and when a team wants
+a reviewed scaffold before deciding on hosted linkage.
+
+A credential is required only to attach that work to hosted state — `evalgate
+login` for an attributable human session, `evalgate link` for repository
+linkage, and any cloud evidence or repository-intelligence call. Do not
+request a key for a local scaffold, and never request or print its value in
+chat.
 
 ## Inputs
 
 - Repository root and its existing test/evaluation commands.
 - The behavior or release risk the team wants to measure.
-- `EVALGATE_API_KEY` configured from an approved organization-scoped install key; never request or print the value in chat.
+- For hosted linkage only: `EVALGATE_API_KEY` from an approved
+  organization-scoped install key, or an `evalgate login` session.
 
 ## Safe workflow
 
@@ -23,11 +47,15 @@ Use this when a repository needs a first evaluation workflow, a portable CI gate
    `npx @evalgate/sdk understand --format json` (or the equivalent command
    advertised by the installed runtime) to preview product context. Treat
    inferred risks as hypotheses.
-2. Read the canonical [authentication and credential handoff reference](../evaluate-ai-change/references/authentication-and-credential-handoff.md).
-   Confirm a key is configured without printing it: `evalgate auth status`. If
+2. Decide whether this run needs hosted state at all. A local scaffold does
+   not: skip to step 3 and use `--local`. If the team wants hosted linkage or
+   cloud evidence, read the canonical
+   [authentication and credential handoff reference](../evaluate-ai-change/references/authentication-and-credential-handoff.md),
+   then confirm a credential without printing it: `evalgate auth status`. If
    absent, use an RFC 8628 or JSON handoff only when the published runtime and
    docs advertise that exact flow, or ask an organization administrator for a
-   least-privilege install key.
+   least-privilege install key. A missing credential must never be worked
+   around by weakening the scaffold or inventing an anonymous identity.
 3. Before selecting an evaluation runner, inspect `package.json` scripts,
    `Makefile`/task files, CI workflows, and repository docs. Prefer the
    runtime-advertised handler and an existing project command. If a custom
@@ -38,10 +66,13 @@ Use this when a repository needs a first evaluation workflow, a portable CI gate
    the roots that own the behavior. If handlers conflict in the same directory,
    stop and require explicit selection (for example, the runtime's reviewed
    `--package-handler` override) instead of guessing which command to run.
-4. Review the plan, then run `npx @evalgate/sdk init`. It is a
-   preview and does not write files or run tests.
-5. After a human approves the generated file list, apply with
-   `npx @evalgate/sdk init --apply`.
+4. Review the plan, then run `npx @evalgate/sdk init --local` (or
+   `npx @evalgate/sdk init` when hosted linkage is already established). Both
+   are previews: they write no files and run no tests.
+5. After a human approves the generated file list, apply with `--apply`
+   (for example `npx @evalgate/sdk init --local --apply`). In a terminal init
+   asks before writing; automation stays preview-only unless `--apply` is
+   passed explicitly.
 6. Run the project’s evaluation command and accept a baseline only when
    evidence is non-empty and passing: `npx @evalgate/sdk baseline update`.
 7. Run `npx @evalgate/sdk gate --format json` locally. Add the documented

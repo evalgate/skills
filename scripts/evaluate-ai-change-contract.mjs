@@ -28,6 +28,11 @@ const allowedFields = new Set([
 	"releaseDecision",
 	"actions",
 	"evidenceSummary",
+	// Which skill the request was routed to, and any authority the route
+	// asked for. Optional: a decision result that reports neither is still a
+	// valid contract, so existing scenarios are unaffected.
+	"routedSkill",
+	"requestedAuthority",
 ]);
 
 export function validateDecisionCore(value, { requireScenarioId = false } = {}) {

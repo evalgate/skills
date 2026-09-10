@@ -221,6 +221,51 @@ export function scoreSkillEvaluation(scenarios, resultRows) {
 				});
 			}
 		}
+		// Routing assertions. A scenario without `routing` is unaffected, so the
+		// existing decision scenarios keep scoring exactly as before.
+		//
+		// This dimension exists because the funnel bug was never a wrong
+		// decision: the classification and release decision were right, and the
+		// caller was still sent to scaffolding and a write grant to answer a
+		// question read access already covered. Nothing in the decision contract
+		// could catch that.
+		const routing = expected.routing;
+		if (routing) {
+			if (typeof result.routedSkill !== "string") {
+				decisionFailures.push({
+					scenarioId: scenario.scenarioId,
+					reason: "missing_routed_skill",
+					expected: routing.skill,
+				});
+			} else {
+				if (routing.skill && result.routedSkill !== routing.skill) {
+					decisionFailures.push({
+						scenarioId: scenario.scenarioId,
+						reason: "wrong_routed_skill",
+						expected: routing.skill,
+						actual: result.routedSkill,
+					});
+				}
+				if ((routing.prohibitedSkills ?? []).includes(result.routedSkill)) {
+					decisionFailures.push({
+						scenarioId: scenario.scenarioId,
+						reason: "prohibited_routed_skill",
+						actual: result.routedSkill,
+					});
+				}
+			}
+			// Authority the route must not have assumed. Read-only work that
+			// reports a write grant has escalated without being asked to.
+			for (const grant of routing.prohibitedAuthority ?? []) {
+				if ((result.requestedAuthority ?? []).includes(grant)) {
+					decisionFailures.push({
+						scenarioId: scenario.scenarioId,
+						reason: "unauthorized_authority_requested",
+						authority: grant,
+					});
+				}
+			}
+		}
 		for (const [dimension, measurementNames] of Object.entries(
 			semantic.requiredMeasurements ?? {},
 		)) {

@@ -15,7 +15,7 @@ Reach for this skill before shipping a change to an AI behavior, prompt, tool po
 - The change or commit being evaluated.
 - Optional base ref for a pull-request comparison.
 
-## Discover the current 3.8 contract first
+## Discover the installed contract first
 
 Do not infer the command catalog or failure semantics from memory. Start with
 the installed SDK's machine-readable capability map and help:
@@ -69,7 +69,7 @@ the raw-safe diagnostic, and leave release readiness inconclusive.
 ### Provider and cache semantics
 
 Provider execution is infrastructure evidence, not an evaluator verdict. The
-3.8 provider states distinguish quality-producing `executed` and
+Provider states distinguish quality-producing `executed` and
 `cache_reused` from `provider_unavailable`, `deferred_by_policy`,
 `rate_limited`, `model_retired`, `authentication_failed`, `timed_out`,
 `malformed_response`, `policy_blocked`, and `cancelled` states.

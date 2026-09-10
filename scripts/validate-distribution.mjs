@@ -52,7 +52,7 @@ for (const requiredReadmeText of [
 	"npx skills add evalgate/skills",
 	"--list",
 	"skills/evaluate-ai-change/SKILL.md",
-	"EvalGate SDK 3.8.x",
+	"EvalGate SDK 3.10.x",
 	"There is no npm package named `@evalgate/skills`",
 	"https://evalgate.com",
 	"https://www.evalgate.com/docs/sdk/cli",
@@ -128,8 +128,21 @@ const scenarios = readFileSync(
 	.filter(Boolean)
 	.map((line) => JSON.parse(line));
 
-if (scenarios.length !== 30) failures.push(`expected 30 scenarios, got ${scenarios.length}`);
-if (new Set(scenarios.map((scenario) => scenario.scenarioId)).size !== 30) {
+// Scenario floor, not an exact count: adding coverage should never require
+// editing the validator, but silently losing scenarios should still fail.
+const MINIMUM_SCENARIOS = 36;
+if (scenarios.length < MINIMUM_SCENARIOS) {
+	failures.push(
+		`expected at least ${MINIMUM_SCENARIOS} scenarios, got ${scenarios.length}`,
+	);
+}
+// Compared against the row count rather than a literal: the previous form was
+// a second count check wearing a uniqueness label, and would have passed a
+// file with duplicate IDs so long as the unique total happened to match.
+if (
+	new Set(scenarios.map((scenario) => scenario.scenarioId)).size !==
+	scenarios.length
+) {
 	failures.push("scenario IDs must be unique");
 }
 const coveredClassifications = [
@@ -221,6 +234,32 @@ for (const scenario of scenarios) {
 			failures.push(
 				`${scenario.scenarioId}: invalid requiredMeasurements for ${dimension}`,
 			);
+		}
+	}
+	// A routing expectation must name a skill that exists, or the assertion
+	// silently passes forever against a typo.
+	const routing = scenario.expected.routing;
+	if (routing !== undefined) {
+		if (typeof routing !== "object" || routing === null) {
+			failures.push(`${scenario.scenarioId}: routing must be an object`);
+		} else {
+			for (const [field, names] of [
+				["skill", routing.skill ? [routing.skill] : []],
+				["prohibitedSkills", routing.prohibitedSkills ?? []],
+			]) {
+				for (const name of names) {
+					if (!skillNames.includes(name)) {
+						failures.push(
+							`${scenario.scenarioId}: routing.${field} names unknown skill ${name}`,
+						);
+					}
+				}
+			}
+			if (routing.skill && (routing.prohibitedSkills ?? []).includes(routing.skill)) {
+				failures.push(
+					`${scenario.scenarioId}: routing.skill is also listed as prohibited`,
+				);
+			}
 		}
 	}
 	const semantic = scenario.expected.semanticExpectations ?? {};
@@ -358,8 +397,19 @@ if (/RFC\s*8628|device(?:-grant|-flow)?/iu.test(setupSkill)) {
 		}
 	}
 }
-if (/3\.7(?:\.|\b)/u.test(readme)) {
-	failures.push("README.md contains a stale SDK 3.7 compatibility claim");
+// Superseded SDK compatibility claims. The ledger under evaluations/ keeps its
+// own version in its filename and is historical evidence, not a claim about
+// what the distribution supports today -- so only README prose is checked.
+for (const supersededSdkVersion of ["3.7", "3.8", "3.9"]) {
+	const pattern = new RegExp(
+		`SDK ${supersededSdkVersion.replace(".", "\\.")}(?:\\.|x|\\b)`,
+		"u",
+	);
+	if (pattern.test(readme)) {
+		failures.push(
+			`README.md contains a stale SDK ${supersededSdkVersion} compatibility claim`,
+		);
+	}
 }
 for (const classification of classifications) {
 	if (!primarySkill.includes(`\`${classification}\``)) {

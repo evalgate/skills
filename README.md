@@ -16,8 +16,9 @@ private prompts, proprietary scoring logic, or internal control mappings.
 
 Canonical source: [github.com/evalgate/skills](https://github.com/evalgate/skills).
 The current distribution is **Agent Skills 1.2.x**, aligned with the published
-[EvalGate SDK 3.8.x](https://www.npmjs.com/package/@evalgate/sdk) capability
-contract. The Skills distribution version is independent from the SDK version;
+[EvalGate SDK 3.10.x](https://www.npmjs.com/package/@evalgate/sdk) capability
+contract (contract version `2026-09-03`, verified against the published
+build). The Skills distribution version is independent from the SDK version;
 the repository's `plugin.json` and `package.json` are machine-readable metadata.
 
 There is no npm package named `@evalgate/skills`. Install from the Skills
