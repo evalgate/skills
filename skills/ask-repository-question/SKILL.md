@@ -13,7 +13,14 @@ Use this when an agent needs a concise answer grounded in a connected repository
 
 - Connected repository identifier.
 - Exact 40-character commit SHA to inspect.
-- A focused question and an API key with the documented repository-intelligence read scopes.
+- A focused question and an EvalGate API key. Reading repositories, existing
+  scans, and answers needs `eval:read`. *Starting* a scan needs `eval:write`
+  and organization membership, because it creates durable evidence (a scan
+  run, a graph version, facts, source locators). If the commit has already
+  been scanned, `eval:read` is enough to ask about it.
+- `eval:write` is permission to write inside EvalGate. It is not GitHub
+  repository-write access: this workflow never pushes, opens a pull request,
+  or modifies the repository, and needs no in-repository scaffold.
 
 ## Safe workflow
 
@@ -76,7 +83,8 @@ the omission and the reason code rather than presenting a scoped "nothing
 found" as a conclusive one.
 
 If no connected repository or credential exists, report that prerequisite as
-what it is. The CLI returns a machine-readable envelope with an exit code and
+what it is — including the case where a read-only key can read prior evidence
+but cannot start a new scan. The CLI returns a machine-readable envelope with an exit code and
 recovery actions (`MISSING_API_KEY` exits 5); relay it instead of retrying,
 and do not fall back to reading local source as though it were the connected
 snapshot.

@@ -62,7 +62,7 @@ Then:
 
 | Intent | Authorized context | Workflow |
 | --- | --- | --- |
-| Understand a system, or scope a change before touching it | Connected repository + read scope | [ask-repository-question](../ask-repository-question/SKILL.md) — read-only, no scaffold, no write access |
+| Understand a system, or scope a change before touching it | Connected repository + EvalGate credential | [ask-repository-question](../ask-repository-question/SKILL.md) — no scaffold, no GitHub write access |
 | Understand a system | Local checkout only | `npx @evalgate/sdk understand --format json` |
 | Evaluate a specific change | Reviewed scaffold and baseline exist | [run-regression-gate](../run-regression-gate/SKILL.md) |
 | Evaluate a specific change | No reviewed scaffold, and the caller wants durable coverage | [setup-evalgate-project](../setup-evalgate-project/SKILL.md) |
@@ -70,10 +70,13 @@ Then:
 | Get reference material or scoped product state | Public docs, or a read scope | [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md) |
 
 Prefer the least authority that answers the question. A connected repository
-with no scaffold and no write access can already reach evidence-linked
+with no scaffold and no GitHub write access can already reach evidence-linked
 understanding through `evalgate repo`; do not route such a caller into
-scaffolding, baseline acceptance, or a write grant to answer a question that
-read scope already covers.
+scaffolding or baseline acceptance to answer a question the repository
+commands already cover. Note the EvalGate scopes differ by step: reading
+existing evidence needs `eval:read`, while starting a scan needs `eval:write`
+and membership because it mints new evidence. Neither is GitHub
+repository-write access.
 
 Escalate only when the intent requires it, and only with the specific
 authority that step needs. Reading does not authorize executing, executing
