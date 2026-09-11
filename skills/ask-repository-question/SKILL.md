@@ -1,13 +1,13 @@
 ---
 name: ask-repository-question
-description: Ask an evidence-bounded question about a connected repository with EvalGate repository intelligence. Use when a scoped API key and an immutable commit are available; do not use this for unrestricted source extraction or speculative architecture claims.
+description: Ask an evidence-bounded question about a durably linked repository with EvalGate repository intelligence. Use when a scoped API key and an exact cloud-targetable commit are available; do not use this for unrestricted source extraction or speculative architecture claims.
 ---
 
 # Ask a repository question
 
 ## When to use
 
-Use this when an agent needs a concise answer grounded in a connected repository snapshot—for example, locating existing evaluations, agent frameworks, model providers, or test entry points. Prefer a specific question over a broad request to summarize private source.
+Use this when an agent needs a concise answer grounded in a durably linked repository snapshot—for example, locating existing evaluations, agent frameworks, model providers, or test entry points. Prefer a specific question over a broad request to summarize private source.
 
 ## Inputs
 
@@ -26,7 +26,7 @@ Use this when an agent needs a concise answer grounded in a connected repository
 
 1. Confirm the key is available without printing it: `evalgate auth status`.
 2. List connected repositories: `evalgate repo repositories`.
-3. Scan the exact immutable commit: `evalgate repo scan --repository <id> --head-sha <40-char-sha>`.
+3. Scan the exact cloud-targetable commit: `evalgate repo scan --repository <id> --head-sha <40-char-sha>`.
 4. Review the scan evidence and graph version before asking a question: `evalgate repo ask --repository <id> --question "<focused question>"`.
 5. Quote only the returned evidence references and mark source detection as detection, not proof of runtime behavior.
 6. If the question would require secrets, customer data, execution, mutation, or a different commit, stop and ask for a narrower authorized request.
@@ -82,7 +82,7 @@ rate-limit stop, or any degradation reason has not finished looking — report
 the omission and the reason code rather than presenting a scoped "nothing
 found" as a conclusive one.
 
-If no connected repository or credential exists, report that prerequisite as
+If no durable repository linkage or credential exists, report that prerequisite as
 what it is — including the case where a read-only key can read prior evidence
 but cannot start a new scan. The CLI returns a machine-readable envelope with an exit code and
 recovery actions (`MISSING_API_KEY` exits 5); relay it instead of retrying,

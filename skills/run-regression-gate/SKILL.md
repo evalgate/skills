@@ -38,11 +38,18 @@ organization-scoped credential. Never print or commit it.
 
 ## Safe workflow
 
-1. Discover the intended suite and write its machine-readable manifest with `npx @evalgate/sdk discover --manifest` (or `evalgate discover --manifest`).
-2. Run the local, deterministic gate with `npx @evalgate/sdk gate --format json`. It is offline by default; use `--allow-network` only when the evaluated project explicitly needs provider-backed execution. For CI, inspect `ci --help`, then use the supported `evalgate ci --format github --write-results` form and upload only the documented artifacts.
-3. When the release decision is API-backed, run the supported `evalgate check --format json` command with its required evaluation and credential arguments. Treat the command's machine report as the decision record, not a remembered numeric exit-code table.
-4. For a failure, run `npx @evalgate/sdk explain --format json` and inspect the evidence-linked case or failure mode before changing code.
-5. If behavior intentionally changed, stop and ask for explicit baseline review. Only then run `npx @evalgate/sdk baseline update`; never run it automatically as failure recovery.
+1. Run `evalgate status --json`. Local regression work requires
+   `readiness.localGate: true`; it does not require remote-head equality or
+   matching cloud evidence. Read `link`, `checkout`, and `cloudSnapshot`
+   independently: a checkout that is behind, ahead, unpushed, diverged, or
+   dirty remains durably linked, though it may not be an exact cloud target.
+   Record dirty-worktree state separately from the exact commit when reporting
+   provenance.
+2. Discover the intended suite and write its machine-readable manifest with `npx @evalgate/sdk discover --manifest` (or `evalgate discover --manifest`).
+3. Run the local, deterministic gate with `npx @evalgate/sdk gate --format json`. It is offline by default; use `--allow-network` only when the evaluated project explicitly needs provider-backed execution. For CI, inspect `ci --help`, then use the supported `evalgate ci --format github --write-results` form and upload only the documented artifacts.
+4. When the release decision is API-backed, run the supported `evalgate check --format json` command with its required evaluation and credential arguments. Treat the command's machine report as the decision record, not a remembered numeric exit-code table.
+5. For a failure, run `npx @evalgate/sdk explain --format json` and inspect the evidence-linked case or failure mode before changing code.
+6. If behavior intentionally changed, stop and ask for explicit baseline review. Only then run `npx @evalgate/sdk baseline update`; never run it automatically as failure recovery.
 
 ## Interpret evidence before scoring
 

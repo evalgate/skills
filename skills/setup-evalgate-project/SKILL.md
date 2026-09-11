@@ -47,8 +47,14 @@ chat.
    `npx @evalgate/sdk understand --format json` (or the equivalent command
    advertised by the installed runtime) to preview product context. Treat
    inferred risks as hypotheses.
-2. Decide whether this run needs hosted state at all. A local scaffold does
-   not: skip to step 3 and use `--local`. If the team wants hosted linkage or
+2. Run `evalgate status --json` and read `link`, `checkout`, `cloudSnapshot`,
+   and `readiness` independently. Ask the owner to run `evalgate login` only
+   when identity is absent, and `evalgate link` only when durable organization,
+   repository, or root context is absent or mismatched. A checkout that is
+   behind, ahead, unpushed, diverged, dirty, or on a different cloud snapshot
+   remains durably linked.
+3. Decide whether this run needs hosted state at all. A local scaffold does
+   not: go straight to the reviewed plan below and use `--local`. If the team wants hosted linkage or
    cloud evidence, read the canonical
    [authentication and credential handoff reference](../evaluate-ai-change/references/authentication-and-credential-handoff.md),
    then confirm a credential without printing it: `evalgate auth status`. If
@@ -56,7 +62,7 @@ chat.
    docs advertise that exact flow, or ask an organization administrator for a
    least-privilege install key. A missing credential must never be worked
    around by weakening the scaffold or inventing an anonymous identity.
-3. Before selecting an evaluation runner, inspect `package.json` scripts,
+4. Before selecting an evaluation runner, inspect `package.json` scripts,
    `Makefile`/task files, CI workflows, and repository docs. Prefer the
    runtime-advertised handler and an existing project command. If a custom
    runner is required, record its exact argv, inputs, output artifact, network
@@ -66,16 +72,16 @@ chat.
    the roots that own the behavior. If handlers conflict in the same directory,
    stop and require explicit selection (for example, the runtime's reviewed
    `--package-handler` override) instead of guessing which command to run.
-4. Review the plan, then run `npx @evalgate/sdk init --local` (or
+5. Review the plan, then run `npx @evalgate/sdk init --local` (or
    `npx @evalgate/sdk init` when hosted linkage is already established). Both
    are previews: they write no files and run no tests.
-5. After a human approves the generated file list, apply with `--apply`
+6. After a human approves the generated file list, apply with `--apply`
    (for example `npx @evalgate/sdk init --local --apply`). In a terminal init
    asks before writing; automation stays preview-only unless `--apply` is
    passed explicitly.
-6. Run the project’s evaluation command and accept a baseline only when
+7. Run the project’s evaluation command and accept a baseline only when
    evidence is non-empty and passing: `npx @evalgate/sdk baseline update`.
-7. Run `npx @evalgate/sdk gate --format json` locally. Add the documented
+8. Run `npx @evalgate/sdk gate --format json` locally. Add the documented
    GitHub Actions workflow only after reviewing the diff.
 
 ## Expected artifacts
