@@ -24,75 +24,106 @@ is demonstrably isolated from observable AI behavior, record that reasoning and
 continue with the repository's ordinary tests. When uncertainty is material,
 start with impacted coverage and expand only as the evidence requires.
 
-Read [behavioral-change-detection.md](references/behavioral-change-detection.md)
+Read `references/behavioral-change-detection.md`
 when impact or scope is ambiguous.
 
 ## Inspect before acting
 
 1. Read repository instructions and preserve its package manager and test flow.
-2. Locate `evalgate.config.json`, evaluation files, datasets, reviewed baselines,
-   quality profiles, traces, judge configuration, experiment history, and CI.
-3. Run `npx @evalgate/sdk understand --format json` to preview an evidence-backed
+2. Run `evalgate status --json`. Treat durable repository linkage, checkout
+   relation, cloud snapshot identity, local-gate readiness, and cloud-target
+   readiness as separate facts. Branch movement does not unlink a repository;
+   never reuse cloud evidence unless the exact target SHA and manifest match.
+3. **When a local checkout is present**, locate `evalgate.config.json`,
+   evaluation files, datasets, reviewed baselines, quality profiles, traces,
+   judge configuration, experiment history, and CI.
+4. **When a local checkout is present**, run
+   `npx @evalgate/sdk understand --format json` to preview an evidence-backed
    product theory. Treat detections as hypotheses, not runtime facts.
-4. State the intended behavior change, affected surfaces and slices, existing
+5. State the intended behavior change, affected surfaces and slices, existing
    coverage, missing evidence, and the minimum sufficient evaluation scope.
-5. Ask for approval before writes, tests with meaningful cost or side effects,
+6. Ask for approval before writes, tests with meaningful cost or side effects,
    baseline changes, cloud access, credential creation, or release mutations.
 
-Use [eval-authoring.md](references/eval-authoring.md) when new coverage is
+Steps 3 and 4 are conditional on purpose. A durably linked repository can be
+inspected without a checkout, so requiring a local config before routing would
+force a clone on a caller whose question the repository commands already
+answer. If there is no checkout, skip to the routing table below and let intent
+and authorized context decide.
+
+Use `references/eval-authoring.md` when new coverage is
 needed. Do not invent a parallel configuration when the repository already has
 a canonical EvalGate workflow.
 
 ## Select the workflow
 
 Route on what the caller asked for and what their context already authorizes.
-The absence of a scaffold is not a reason to build one: it usually means
-nobody has looked at the repository yet, and looking is read-only.
+The absence of a scaffold is not a reason to build one: it usually means nobody
+has looked at the repository yet, and looking is read-only.
 
 Establish two facts first, because they decide the branch:
 
-- **Intent.** Understand something, evaluate a specific change, gate a
-  release, or get reference material? Take the caller's stated intent over an
-  inferred one.
-- **Authorized context.** Is there a connected repository and a scoped
+- **Intent.** Understand something, evaluate a specific change, gate a release,
+  or get reference material? Take the caller's stated intent over an inferred
+  one.
+- **Authorized context.** Is there a durable repository linkage and a scoped
   credential (`evalgate auth status`), a local checkout, both, or neither?
-  Never assume authority that has not been demonstrated.
+  Never assume authority that has not been demonstrated. Linkage, checkout
+  relation, and an exact cloud-targetable snapshot are three separate facts:
+  branch movement, uncommitted files, and unpushed commits do not erase a
+  durable linkage, though they can mean the current contents are not a
+  verified cloud target.
 
 Then:
 
 | Intent | Authorized context | Workflow |
 | --- | --- | --- |
-| Understand a system, or scope a change before touching it | Connected repository + EvalGate credential | [ask-repository-question](../ask-repository-question/SKILL.md) — no scaffold, no GitHub write access |
+| Understand a system, or scope a change before touching it | Durable linkage + EvalGate credential, evidence for the exact target snapshot already exists | [ask-repository-question](../ask-repository-question/SKILL.md) — no scaffold, no GitHub repository-write access |
+| Understand a system | Durable linkage + read scope, but no evidence for the required snapshot | Name the missing evidence and the exact authority a scan needs. Do not answer from a different snapshot and do not guess. |
+| Understand a system | No linkage yet | Offer the supported identity, consent, and linkage handoff. No local scaffold is required to get there. |
 | Understand a system | Local checkout only | `npx @evalgate/sdk understand --format json` |
+| Create the missing evidence | EvalGate `eval:write` and member role | Start a scan. This mints EvalGate evidence; it does not need and must not request GitHub repository-write access. |
 | Evaluate a specific change | Reviewed scaffold and baseline exist | [run-regression-gate](../run-regression-gate/SKILL.md) |
+| Gate a release, and the caller named an existing gate | That gate exists | Use it directly. Do not route a caller with a working gate through onboarding. |
 | Evaluate a specific change | No reviewed scaffold, and the caller wants durable coverage | [setup-evalgate-project](../setup-evalgate-project/SKILL.md) |
 | Explain behavior a static read cannot | Runtime evidence missing | [collect-agent-traces](../collect-agent-traces/SKILL.md) |
-| Get reference material or scoped product state | Public docs, or a read scope | [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md) |
+| Get reference material | Public documentation only | [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md) — no signup |
+| Get scoped product state | A read scope | [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md) |
 
-Prefer the least authority that answers the question. A connected repository
-with no scaffold and no GitHub write access can already reach evidence-linked
-understanding through `evalgate repo`; do not route such a caller into
-scaffolding or baseline acceptance to answer a question the repository
-commands already cover. Note the EvalGate scopes differ by step: reading
+Prefer the least authority that answers the question. A durably linked
+repository with no scaffold and no GitHub repository-write access can already
+reach evidence-linked understanding through `evalgate repo`; do not route such
+a caller into scaffolding or baseline acceptance to answer a question the
+repository commands already cover. The EvalGate scopes differ by step: reading
 existing evidence needs `eval:read`, while starting a scan needs `eval:write`
 and membership because it mints new evidence. Neither is GitHub
 repository-write access.
 
-Escalate only when the intent requires it, and only with the specific
-authority that step needs. Reading does not authorize executing, executing
-does not authorize a patch, a patch does not authorize a push, and a passing
-gate does not authorize a merge. A good result never widens a grant.
+Escalate only when the intent requires it, and only with the specific authority
+that step needs. Reading does not authorize executing, executing does not
+authorize a patch, a patch does not authorize a push, and a passing gate does
+not authorize a merge or a pull request. Opening or merging a pull request is
+separate explicit authority: neither repository intelligence nor passing
+evidence grants it. A good result never widens a grant.
 
 When the caller explicitly asks for local, offline, or credential-free work —
-or is working from uncommitted changes, a restricted network, or a sandbox —
-use the local path and do not route them to hosted signup. `evalgate init
---local` needs no credential and no network.
+or is working from uncommitted changes or a restricted network — use the local
+path and do not route them to hosted signup. `evalgate init --local` needs no
+credential and no network. Running inside a cloud sandbox is not by itself a
+reason to choose either path: decide from intent, connectivity, and
+demonstrated authority, not from where the agent happens to execute.
+
+Match evidence to the exact target snapshot, even if another scan completes
+while you are asking. A newer scan is not evidence about the commit under
+discussion.
+
+When a scan returns no findings, say what was covered and what that scope can
+and cannot settle, then propose the next authorized evaluation. Do not invent a
+defect, and do not report a clean static read as proof of runtime correctness.
 
 Prefer `npx @evalgate/sdk capabilities --format json` and the published CLI help
-over remembered commands. When hosted access is needed, read the canonical
-[authentication and credential handoff reference](references/authentication-and-credential-handoff.md).
-Hosted actions require an attributable, organization-scoped credential. Never
-request, print, or commit its value.
+over remembered commands. Hosted actions require an attributable,
+organization-scoped credential. Never request, print, or commit its value.
 
 ## Evidence triage
 
@@ -179,15 +210,15 @@ one canonical value: `not_applicable`, `behavioral_change`, `experiment`,
 `coverage_gap`, `infrastructure_failure`, `regression`, `improvement`,
 `tradeoff`, or `inconclusive`.
 
-Read [decision-contract.md](references/decision-contract.md) before serializing
+Read `references/decision-contract.md` before serializing
 or persisting a result. It defines classification precedence and the only valid
 `classification` → `invokeEvalGate` → `releaseDecision` combinations. Never
 invent a synonym or select the release decision independently.
 
-Read [regression-analysis.md](references/regression-analysis.md) for failure and
-slice analysis, [experiment-analysis.md](references/experiment-analysis.md) for
+Read `references/regression-analysis.md` for failure and
+slice analysis, `references/experiment-analysis.md` for
 variant or Skill comparisons, and
-[cost-optimization.md](references/cost-optimization.md) for joint quality,
+`references/cost-optimization.md` for joint quality,
 latency, reliability, token, and cost decisions.
 
 ## Never game the evidence
@@ -201,7 +232,7 @@ correctness. A better aggregate does not excuse a protected-slice regression.
 When a legitimate regression appears, fix the implementation and rerun the
 affected scope. Baseline changes require explicit review of an intentional
 behavioral contract change. Read
-[release-gates.md](references/release-gates.md) before recommending promotion.
+`references/release-gates.md` before recommending promotion.
 
 ## Convert reusable failures into coverage
 
@@ -215,23 +246,22 @@ When existing coverage missed a real failure:
 6. preserve provenance connecting failure, coverage, fix, and rerun.
 
 Avoid brittle cases for incidental implementation details. Read
-[evidence-and-provenance.md](references/evidence-and-provenance.md) for the
+`references/evidence-and-provenance.md` for the
 required handoff.
 
 ## Report the decision
 
 Return the repository revision, behavioral impact, scope selected, commands
-executed, cases and slices exercised, evidence mode, provider/cache/trajectory
-state, canonical classification and derived release decision,
-quality/cost/latency/reliability evidence, artifacts, remaining uncertainty,
-and release readiness. Separate product regressions from invalid or incomplete
-execution. When returning JSON, conform to
-[decision-contract.schema.json](assets/decision-contract.schema.json).
+executed, cases and slices exercised, canonical classification and derived
+release decision, quality/cost/latency/reliability evidence, artifacts,
+remaining uncertainty, and release status. Separate product regressions from
+invalid or incomplete execution. When returning JSON, conform to
+`assets/decision-contract.schema.json`.
 The required `evidenceSummary` covers quality, protected slices, reliability,
 latency, and cost. Use `status: "not_measured"` with a concrete reason when a
 dimension has no valid evidence; never estimate, infer, or fabricate a metric
 just to complete the object.
 
-Use [troubleshooting.md](references/troubleshooting.md) when the workflow cannot
+Use `references/troubleshooting.md` when the workflow cannot
 produce valid evidence. Never claim safety or release readiness for an
 unexercised runtime, model, provider, dataset, authorization, or policy boundary.
