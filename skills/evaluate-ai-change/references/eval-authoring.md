@@ -25,3 +25,12 @@ baseline.
 
 Use `npx @evalgate/sdk capabilities --format json` and current CLI help to find
 the supported authoring path. Do not invent a command, endpoint, or schema.
+
+## Spec naming and discovery
+
+- Spec names must be **literal** strings. Static discovery rejects names built
+  in a loop, such as ``defineEval(`case ${id}`)``.
+- Allowed characters are letters, numbers, spaces, hyphens, and underscores.
+  Do not use `/` or other punctuation in a spec name.
+- After deleting a spec file, rerun `npx @evalgate/sdk discover --manifest`.
+  Otherwise `run` may try to load the missing file from a stale manifest.

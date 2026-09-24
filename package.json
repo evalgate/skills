@@ -7,7 +7,9 @@
 	"scripts": {
 		"test": "node tests/run.mjs",
 		"validate": "node scripts/validate-distribution.mjs",
-		"test:behavior": "node scripts/evaluate-ai-change-harness.mjs --mode fixture"
+		"test:behavior": "node scripts/evaluate-ai-change-harness.mjs --mode fixture",
+		"test:behavior:live": "node scripts/evaluate-ai-change-harness.mjs --mode live --allow-skip",
+		"check:commands": "node scripts/check-commands.mjs"
 	},
 	"engines": {
 		"node": ">=20"

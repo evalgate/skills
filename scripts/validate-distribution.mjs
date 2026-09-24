@@ -52,7 +52,7 @@ for (const requiredReadmeText of [
 	"npx skills add evalgate/skills",
 	"--list",
 	"skills/evaluate-ai-change/SKILL.md",
-	"EvalGate SDK 3.10.x",
+	"EvalGate SDK 3.12.3",
 	"There is no npm package named `@evalgate/skills`",
 	"https://evalgate.com",
 	"https://www.evalgate.com/docs/sdk/cli",
@@ -330,8 +330,8 @@ if (/Stable exit codes|\|\s*0\s*\|/iu.test(regressionSkill)) {
 if (!existsSync(resolve(root, "scripts/evaluate-ai-change-harness.mjs"))) {
 	failures.push("behavioral harness is missing");
 }
-if (!existsSync(resolve(root, "evaluations/3.8-convergence-truth-ledger.md"))) {
-	failures.push("3.8 convergence truth ledger is missing");
+if (!existsSync(resolve(root, "evaluations/convergence-truth-ledger.md"))) {
+	failures.push("convergence truth ledger is missing");
 }
 const harness = readFileSync(resolve(root, "scripts/evaluate-ai-change-harness.mjs"), "utf8");
 for (const requiredHarnessText of [
@@ -390,17 +390,24 @@ if (/RFC\s*8628|device(?:-grant|-flow)?/iu.test(setupSkill)) {
 		failures.push("setup-evalgate-project references device handoff without a canonical auth reference");
 	} else {
 		const authReference = readFileSync(authReferencePath, "utf8");
-		for (const currentAuthPath of ["/oauth/device/authorization", "/oauth/token", "auth status"]) {
+		for (const currentAuthPath of ["/oauth/device/authorization", "/oauth/token", "whoami"]) {
 			if (!authReference.includes(currentAuthPath)) {
 				failures.push(`canonical auth reference omits current path ${currentAuthPath}`);
 			}
 		}
+		if (
+			/`evalgate auth (?:status|configure)`|^\s*evalgate auth (?:status|configure)/mu.test(
+				authReference,
+			)
+		) {
+			failures.push(
+				"canonical auth reference still recommends removed auth status/configure commands",
+			);
+		}
 	}
 }
-// Superseded SDK compatibility claims. The ledger under evaluations/ keeps its
-// own version in its filename and is historical evidence, not a claim about
-// what the distribution supports today -- so only README prose is checked.
-for (const supersededSdkVersion of ["3.7", "3.8", "3.9"]) {
+// Superseded SDK compatibility claims in README prose.
+for (const supersededSdkVersion of ["3.7", "3.8", "3.9", "3.10", "3.11"]) {
 	const pattern = new RegExp(
 		`SDK ${supersededSdkVersion.replace(".", "\\.")}(?:\\.|x|\\b)`,
 		"u",

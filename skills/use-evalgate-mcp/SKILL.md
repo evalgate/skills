@@ -9,12 +9,46 @@ description: Use EvalGate’s public documentation MCP or authenticated read-onl
 
 Reach for this skill when an MCP-capable agent needs EvalGate guidance or attributable customer context. The documentation server is a public read-only feed over reviewed published docs. Obtain and configure a scoped API key before using product tools or customer data.
 
+`npx skills add evalgate/skills` copies skills only — it does **not** install
+`.mcp.json`. Add the servers below to the client configuration yourself.
+
 ## Inputs
 
 - No credential for the public documentation server.
 - A customer-provisioned short-lived bearer token or API key for the product server.
 - MCP client support for Streamable HTTP.
 - The required product read scopes (`eval:read` for the product server; connector health has an organization-admin boundary).
+
+## Configure the servers
+
+Paste these entries into the client's MCP configuration (Cursor
+`.cursor/mcp.json`, Claude Desktop, or the project's `.mcp.json`). Never commit
+a token.
+
+```json
+{
+  "mcpServers": {
+    "evalgate-docs": {
+      "type": "http",
+      "url": "https://www.evalgate.com/api/mcp/docs"
+    },
+    "evalgate-product": {
+      "type": "http",
+      "url": "https://www.evalgate.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${EVALGATE_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+The docs server is anonymous and public-content-only. The product server needs
+a token: anonymous tool calls return `401`. Keep the bearer value in the
+client's secret store, not in a checked-in header.
+
+Published plugin manifests in this repository (`mcp.json`, `.mcp.json`) list
+the same URLs without credentials.
 
 ## Safe workflow
 
