@@ -12,13 +12,17 @@ runtime authority is the published [authentication walkthrough](https://www.eval
 OAuth metadata. Do not infer a capability from this document if the runtime
 discovery documents disagree.
 
+Invoke every CLI command as `npx @evalgate/sdk <cmd>`. Never run
+`npx evalgate` — the unscoped npm package is a third-party package.
+
 ## Decide whether a credential is needed
 
 - Local `init`, repository inspection, custom in-process evaluations, and
   `gate --offline` can run without a hosted credential.
 - Hosted evaluations, organization-scoped evidence, repository intelligence,
   trace upload, and product MCP tools require an attributable bearer credential
-  with the operation's documented scope.
+  with the operation's documented scope, **or** a saved `login` session that
+  the CLI can read.
 - The public documentation MCP at
   `https://www.evalgate.com/api/mcp/docs` is anonymous, read-only, and has no
   organization context. Do not send a bearer token to it unless its current
@@ -26,17 +30,27 @@ discovery documents disagree.
 - An EvalGate API key identifies an organization and approved scopes. It does
   not provide model-provider credentials, repository access, billing access, or
   administrative privileges by implication.
+- Either a saved `login` session or `EVALGATE_API_KEY` works for CLI `repo`,
+  `check`, and `trace`. `whoami` shows which credential source is active. The
+  SDK library (`new AIEvalClient()`) still needs an explicit key; only the CLI
+  reads the saved session.
 
 Start local discovery without exposing secrets:
 
 ```bash
-evalgate auth status
+npx @evalgate/sdk whoami
+npx @evalgate/sdk status --json
 npx @evalgate/sdk capabilities --format json
 ```
 
-`auth status` is a local configuration check, not proof that a particular
-operation is authorized. Check the command's current help and OpenAPI scope
-metadata before making a hosted call.
+`whoami` reports credential source, scopes, expiry, and workspace without
+printing the secret. Readiness comes from `status --json`
+(`readiness.hostedAuthenticated`, `readiness.hostedLinked`, and
+`link.status`). Neither command alone proves that a particular operation is
+authorized. Check the command's current help and OpenAPI scope metadata before
+making a hosted call. The removed `auth` family (`auth status`,
+`auth configure`, `auth provision`) returns `COMMAND_REMOVED` and must not be
+used.
 
 ## Supported human and agent paths
 
@@ -47,13 +61,27 @@ sign-in flow. Organization membership and key issuance remain attributable to
 that signed-in person. EvalGate does not use an email/password pair or a
 separate EvalGate verification email in this flow.
 
+### Interactive CLI login
+
+For a person at a terminal, run:
+
+```bash
+npx @evalgate/sdk login
+```
+
+`login` starts a browser device flow, shows the requested scopes before
+approval, and stores the CLI session locally without printing it. Verify with
+`whoami` and readiness with `status --json`.
+
 ### Existing organization-scoped API/install key
 
 An organization administrator may provision an install key, or an approved
 operator may provide an existing least-privilege API key through the documented
-handoff. Configure it with `evalgate auth configure --api-key <key>` and verify
-only with `evalgate auth status`. The agent must never ask a person to paste the
-value into chat, print it, infer it, or place it in repository configuration.
+handoff. For CI and headless environments, inject `EVALGATE_API_KEY` from a
+secret store. Verify only with `whoami` and `status --json`. The agent must
+never ask a person to paste the value into chat, print it, infer it, or place
+it in repository configuration. Do not run the removed
+`auth configure --api-key` command.
 
 ### RFC 8628 device handoff
 
@@ -110,15 +138,18 @@ action before human approval.
 
 ## Store and use the credential
 
-For local CLI use, configure the returned key through the documented command:
+For local CLI use by a person, prefer `login` so the session is stored outside
+the repository. For CI, inject `EVALGATE_API_KEY` through the secret store
+rather than writing a local credential file:
 
 ```bash
-evalgate auth configure --api-key <key>
-evalgate auth status
+npx @evalgate/sdk login
+npx @evalgate/sdk whoami
+npx @evalgate/sdk status --json
 ```
 
-The CLI stores it outside the repository in the operating-system user
-configuration directory. The published runtime documents these defaults:
+The CLI stores a login session outside the repository in the operating-system
+user configuration directory. The published runtime documents these defaults:
 
 - Windows: `%APPDATA%\\evalgate\\config.json`
 - macOS: `~/Library/Application Support/evalgate/config.json`
@@ -126,8 +157,7 @@ configuration directory. The published runtime documents these defaults:
 
 Managed environments may use an absolute `EVALGATE_CONFIG_HOME`. Repository
 configuration must not supply a bearer key or redirect a saved/environment key
-to an untrusted API origin. CI should inject `EVALGATE_API_KEY` through its
-secret store rather than writing a local credential file.
+to an untrusted API origin.
 
 ### Headless CI authentication
 
@@ -148,16 +178,23 @@ OpenAPI or the protected-resource metadata; do not guess routes or scopes.
   Read the `WWW-Authenticate` challenge and its `resource_metadata` link.
 - `403 Forbidden`: the credential is valid but lacks a required scope or
   organization permission. Request a least-privilege replacement from an
-  authorized organization member; do not guess broader scopes.
+  authorized organization member; do not guess broader scopes. Prefer the
+  machine envelope's `retryable` and `failureClass` (for example
+  `insufficient_scope`) over remembering that exit 4 is always retryable.
 - `429 Too Many Requests`: honor `Retry-After` and the advertised rate-limit
   headers. Do not poll faster or retry indefinitely.
+- Link `code: human_action_required` (legacy `GITHUB_ACCESS_REQUIRED`): the
+  person must open the returned install URL. Do not retry in a loop.
+- Link `GITHUB_INSTALL_UNAVAILABLE` (503): the operator has not configured the
+  GitHub App. Report it; do not retry as if it were transient.
 - A pending, denied, expired, or unavailable handoff is an authentication or
   infrastructure outcome—not evidence that an organization, project, or
   evaluation is absent.
 
 Revoke keys through the authorized organization control plane or the documented
 OAuth revoke endpoint. Remove revoked secrets from local and CI stores and
-rotate them if they may have entered logs or history.
+rotate them if they may have entered logs or history. Use
+`npx @evalgate/sdk logout` to clear a saved CLI session.
 
 ## Explicitly unsupported claims
 
@@ -187,7 +224,7 @@ Before reporting hosted readiness, record:
 5. the machine-readable response status and evidence identifiers; and
 6. any unexercised provider, authorization, or policy boundary.
 
-Do not report `auth status` alone as proof of hosted access. Do not report
-successful public discovery as proof of organization authorization. Hosted
-evidence remains separate from local offline evidence and must be classified by
-the canonical `evaluate-ai-change` decision contract.
+Do not report `whoami` or `status --json` alone as proof of hosted access. Do
+not report successful public discovery as proof of organization authorization.
+Hosted evidence remains separate from local offline evidence and must be
+classified by the canonical `evaluate-ai-change` decision contract.

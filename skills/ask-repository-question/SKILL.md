@@ -1,9 +1,14 @@
 ---
 name: ask-repository-question
-description: Ask an evidence-bounded question about a durably linked repository with EvalGate repository intelligence. Use when a scoped API key and an exact cloud-targetable commit are available; do not use this for unrestricted source extraction or speculative architecture claims.
+description: Ask an evidence-bounded question about a durably linked repository with EvalGate repository intelligence. Use when a scoped API key or saved login session and an exact cloud-targetable commit are available; do not use this for unrestricted source extraction or speculative architecture claims.
 ---
 
 # Ask a repository question
+
+## CLI invocation
+
+Every `evalgate` command in this skill means `npx @evalgate/sdk`. Never run
+`npx evalgate` — the unscoped npm package is a third-party package.
 
 ## When to use
 
@@ -13,21 +18,29 @@ Use this when an agent needs a concise answer grounded in a durably linked repos
 
 - Connected repository identifier.
 - Exact 40-character commit SHA to inspect.
-- A focused question and an EvalGate API key. Reading repositories, existing
-  scans, and answers needs `eval:read`. *Starting* a scan needs `eval:write`
-  and organization membership, because it creates durable evidence (a scan
-  run, a graph version, facts, source locators). If the commit has already
-  been scanned, `eval:read` is enough to ask about it.
+- A focused question and an EvalGate credential: either `EVALGATE_API_KEY` or a
+  saved `npx @evalgate/sdk login` session. `whoami` shows which is active.
+  Reading repositories, existing scans, and answers needs `eval:read`.
+  *Starting* a scan needs `eval:write` and organization membership, because it
+  creates durable evidence (a scan run, a graph version, facts, source
+  locators). If the commit has already been scanned, `eval:read` is enough to
+  ask about it. The SDK library still needs an explicit key; only the CLI reads
+  the saved session.
 - `eval:write` is permission to write inside EvalGate. It is not GitHub
   repository-write access: this workflow never pushes, opens a pull request,
   or modifies the repository, and needs no in-repository scaffold.
 
 ## Safe workflow
 
-1. Confirm the key is available without printing it: `evalgate auth status`.
-2. List connected repositories: `evalgate repo repositories`.
-3. Scan the exact cloud-targetable commit: `evalgate repo scan --repository <id> --head-sha <40-char-sha>`.
-4. Review the scan evidence and graph version before asking a question: `evalgate repo ask --repository <id> --question "<focused question>"`.
+1. Confirm identity and readiness without printing secrets:
+   `npx @evalgate/sdk whoami` and `npx @evalgate/sdk status --json`
+   (`readiness.hostedAuthenticated`, `readiness.hostedLinked`, `link.status`).
+2. List connected repositories: `npx @evalgate/sdk repo repositories`.
+3. Scan the exact cloud-targetable commit:
+   `npx @evalgate/sdk repo scan --repository <id> --head-sha <40-char-sha>`.
+4. Review the scan evidence and graph version before asking a question, pinning
+   the answer to the same commit:
+   `npx @evalgate/sdk repo ask --repository <id> --head-sha <same-sha-as-the-scan> --question "<focused question>"`.
 5. Quote only the returned evidence references and mark source detection as detection, not proof of runtime behavior.
 6. If the question would require secrets, customer data, execution, mutation, or a different commit, stop and ask for a narrower authorized request.
 
@@ -84,7 +97,15 @@ found" as a conclusive one.
 
 If no durable repository linkage or credential exists, report that prerequisite as
 what it is — including the case where a read-only key can read prior evidence
-but cannot start a new scan. The CLI returns a machine-readable envelope with an exit code and
-recovery actions (`MISSING_API_KEY` exits 5); relay it instead of retrying,
+but cannot start a new scan. The CLI returns a machine-readable envelope with an
+exit code, `retryable`, `failureClass`, and recovery actions
+(`MISSING_API_KEY` still exits 5). Trust `retryable` over the exit code (exit 4
+is labelled retryable in the exit table even for some non-retryable failures
+such as a 403/`insufficient_scope`). Relay the envelope instead of retrying,
 and do not fall back to reading local source as though it were the connected
 snapshot.
+
+When `link` (or a related handoff) returns `code: human_action_required`
+(legacy `GITHUB_ACCESS_REQUIRED`), the person must open the install URL. When
+it returns `GITHUB_INSTALL_UNAVAILABLE` (503), report an operator
+configuration problem — do not retry.

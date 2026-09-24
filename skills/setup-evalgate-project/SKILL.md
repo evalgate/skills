@@ -5,6 +5,11 @@ description: Set up a repository for its first EvalGate evaluation and regressio
 
 # Set up an EvalGate project
 
+## CLI invocation
+
+Every `evalgate` command in this skill means `npx @evalgate/sdk`. Never run
+`npx evalgate` — the unscoped npm package is a third-party package.
+
 ## When to use
 
 Use this when a repository needs durable evaluation coverage: a first
@@ -20,24 +25,26 @@ looking.
 
 ## Credential boundary
 
-`evalgate init --local` is credential-free. It writes no hosted state, needs
-no organization-scoped key, and makes no network call; the published runtime
-reports `networkAndCredentials.initApply: "none"` for this path. Use it for
-local, offline, sandboxed, or restricted-network work, and when a team wants
-a reviewed scaffold before deciding on hosted linkage.
+`npx @evalgate/sdk init --local` is credential-free. It writes no hosted state,
+needs no organization-scoped key, and makes no network call; the published
+runtime reports `networkAndCredentials.initApply: "none"` for this path. Use
+it for local, offline, sandboxed, or restricted-network work, and when a team
+wants a reviewed scaffold before deciding on hosted linkage.
 
-A credential is required only to attach that work to hosted state — `evalgate
-login` for an attributable human session, `evalgate link` for repository
-linkage, and any cloud evidence or repository-intelligence call. Do not
-request a key for a local scaffold, and never request or print its value in
-chat.
+A credential is required only to attach that work to hosted state —
+`npx @evalgate/sdk login` for an attributable human session,
+`npx @evalgate/sdk link` for repository linkage, and any cloud evidence or
+repository-intelligence call. Do not request a key for a local scaffold, and
+never request or print its value in chat.
 
 ## Inputs
 
 - Repository root and its existing test/evaluation commands.
 - The behavior or release risk the team wants to measure.
 - For hosted linkage only: `EVALGATE_API_KEY` from an approved
-  organization-scoped install key, or an `evalgate login` session.
+  organization-scoped install key, or a saved `npx @evalgate/sdk login`
+  session. `whoami` shows which is active. The SDK library still needs an
+  explicit key; only the CLI reads the saved session.
 
 ## Safe workflow
 
@@ -47,21 +54,26 @@ chat.
    `npx @evalgate/sdk understand --format json` (or the equivalent command
    advertised by the installed runtime) to preview product context. Treat
    inferred risks as hypotheses.
-2. Run `evalgate status --json` and read `link`, `checkout`, `cloudSnapshot`,
-   and `readiness` independently. Ask the owner to run `evalgate login` only
-   when identity is absent, and `evalgate link` only when durable organization,
-   repository, or root context is absent or mismatched. A checkout that is
-   behind, ahead, unpushed, diverged, dirty, or on a different cloud snapshot
-   remains durably linked.
+2. Run `npx @evalgate/sdk status --json` and read `link`, `checkout`,
+   `cloudSnapshot`, and `readiness` independently. Ask the owner to run
+   `npx @evalgate/sdk login` only when identity is absent, and
+   `npx @evalgate/sdk link` only when durable organization, repository, or root
+   context is absent or mismatched. A checkout that is behind, ahead, unpushed,
+   diverged, dirty, or on a different cloud snapshot remains durably linked.
 3. Decide whether this run needs hosted state at all. A local scaffold does
-   not: go straight to the reviewed plan below and use `--local`. If the team wants hosted linkage or
-   cloud evidence, read the canonical
+   not: go straight to the reviewed plan below and use `--local`. If the team
+   wants hosted linkage or cloud evidence, read the canonical
    [authentication and credential handoff reference](../evaluate-ai-change/references/authentication-and-credential-handoff.md),
-   then confirm a credential without printing it: `evalgate auth status`. If
-   absent, use an RFC 8628 or JSON handoff only when the published runtime and
-   docs advertise that exact flow, or ask an organization administrator for a
-   least-privilege install key. A missing credential must never be worked
-   around by weakening the scaffold or inventing an anonymous identity.
+   then confirm a credential without printing it:
+   `npx @evalgate/sdk whoami` and `npx @evalgate/sdk status --json`. If
+   absent, use `npx @evalgate/sdk login` for a person, or ask an organization
+   administrator for a least-privilege install key set as `EVALGATE_API_KEY`.
+   A missing credential must never be worked around by weakening the scaffold
+   or inventing an anonymous identity.
+   When `link` returns `code: human_action_required` (legacy
+   `GITHUB_ACCESS_REQUIRED`), ask the person to open the install URL. When it
+   returns `GITHUB_INSTALL_UNAVAILABLE` (503), report an operator
+   configuration problem and stop — do not retry.
 4. Before selecting an evaluation runner, inspect `package.json` scripts,
    `Makefile`/task files, CI workflows, and repository docs. Prefer the
    runtime-advertised handler and an existing project command. If a custom

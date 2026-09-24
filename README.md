@@ -16,8 +16,8 @@ private prompts, proprietary scoring logic, or internal control mappings.
 
 Canonical source: [github.com/evalgate/skills](https://github.com/evalgate/skills).
 The current distribution is **Agent Skills 1.2.x**, aligned with the published
-[EvalGate SDK 3.10.x](https://www.npmjs.com/package/@evalgate/sdk) capability
-contract (contract version `2026-09-03`, verified against the published
+[EvalGate SDK 3.12.3](https://www.npmjs.com/package/@evalgate/sdk) capability
+contract (contract version `2026-09-10`, verified against the published
 build). The Skills distribution version is independent from the SDK version;
 the repository's `plugin.json` and `package.json` are machine-readable metadata.
 
@@ -143,7 +143,7 @@ pretending to run an agent or model; an optional live adapter must be supplied
 explicitly and receives the primary Skill, every routed child Skill, and the
 reviewed references used by that routing path. It reports whether it actually
 executed. See the
-[3.8 convergence truth ledger](evaluations/3.8-convergence-truth-ledger.md) for
+[convergence truth ledger](evaluations/convergence-truth-ledger.md) for
 the runtime facts this distribution is allowed to teach.
 
 ```bash

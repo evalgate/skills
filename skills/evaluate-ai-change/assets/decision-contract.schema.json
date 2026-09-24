@@ -161,6 +161,7 @@
 			"type": "string",
 			"enum": [
 				"not_applicable",
+				"not_a_change",
 				"behavioral_change",
 				"experiment",
 				"coverage_gap",
@@ -175,6 +176,7 @@
 			"type": "string",
 			"enum": [
 				"ordinary_tests",
+				"inform",
 				"evaluate",
 				"compare",
 				"block_until_covered",
@@ -187,6 +189,7 @@
 	},
 	"x-releaseDecisionByClassification": {
 		"not_applicable": "ordinary_tests",
+		"not_a_change": "inform",
 		"behavioral_change": "evaluate",
 		"experiment": "compare",
 		"coverage_gap": "block_until_covered",
@@ -198,6 +201,7 @@
 	},
 	"x-invokeEvalGateByClassification": {
 		"not_applicable": false,
+		"not_a_change": true,
 		"behavioral_change": true,
 		"experiment": true,
 		"coverage_gap": true,

@@ -8,6 +8,14 @@ description: Determine and execute the smallest defensible EvalGate workflow for
 The skill gives the agent evaluation discipline. EvalGate supplies execution,
 evidence, history, permissions, and enforcement.
 
+## CLI invocation
+
+Every `evalgate` command in this skill means `npx @evalgate/sdk`. Never run
+`npx evalgate` — the unscoped npm package is a third-party package. Until PyPI
+`evalgate-sdk` catches up with the Node SDK (3.6.0 lacks `capabilities`,
+`status`, `login`, `link`, and `repo`), run CLI workflows with
+`npx @evalgate/sdk` even in Python repositories.
+
 ## Decide whether evaluation is required
 
 Inspect the requested diff and the repository before running anything. Invoke an
@@ -30,10 +38,11 @@ when impact or scope is ambiguous.
 ## Inspect before acting
 
 1. Read repository instructions and preserve its package manager and test flow.
-2. Run `evalgate status --json`. Treat durable repository linkage, checkout
-   relation, cloud snapshot identity, local-gate readiness, and cloud-target
-   readiness as separate facts. Branch movement does not unlink a repository;
-   never reuse cloud evidence unless the exact target SHA and manifest match.
+2. Run `npx @evalgate/sdk status --json`. Treat durable repository linkage,
+   checkout relation, cloud snapshot identity, local-gate readiness, and
+   cloud-target readiness as separate facts. Branch movement does not unlink a
+   repository; never reuse cloud evidence unless the exact target SHA and
+   manifest match.
 3. **When a local checkout is present**, locate `evalgate.config.json`,
    evaluation files, datasets, reviewed baselines, quality profiles, traces,
    judge configuration, experiment history, and CI.
@@ -67,12 +76,14 @@ Establish two facts first, because they decide the branch:
   or get reference material? Take the caller's stated intent over an inferred
   one.
 - **Authorized context.** Is there a durable repository linkage and a scoped
-  credential (`evalgate auth status`), a local checkout, both, or neither?
+  credential (`npx @evalgate/sdk whoami` plus
+  `npx @evalgate/sdk status --json`), a local checkout, both, or neither?
   Never assume authority that has not been demonstrated. Linkage, checkout
   relation, and an exact cloud-targetable snapshot are three separate facts:
   branch movement, uncommitted files, and unpushed commits do not erase a
   durable linkage, though they can mean the current contents are not a
-  verified cloud target.
+  verified cloud target. A saved `login` session or `EVALGATE_API_KEY` both
+  count; `whoami` shows which is active.
 
 Then:
 
@@ -92,11 +103,11 @@ Then:
 
 Prefer the least authority that answers the question. A durably linked
 repository with no scaffold and no GitHub repository-write access can already
-reach evidence-linked understanding through `evalgate repo`; do not route such
-a caller into scaffolding or baseline acceptance to answer a question the
-repository commands already cover. The EvalGate scopes differ by step: reading
-existing evidence needs `eval:read`, while starting a scan needs `eval:write`
-and membership because it mints new evidence. Neither is GitHub
+reach evidence-linked understanding through `npx @evalgate/sdk repo`; do not
+route such a caller into scaffolding or baseline acceptance to answer a
+question the repository commands already cover. The EvalGate scopes differ by
+step: reading existing evidence needs `eval:read`, while starting a scan needs
+`eval:write` and membership because it mints new evidence. Neither is GitHub
 repository-write access.
 
 Escalate only when the intent requires it, and only with the specific authority
@@ -108,9 +119,9 @@ evidence grants it. A good result never widens a grant.
 
 When the caller explicitly asks for local, offline, or credential-free work —
 or is working from uncommitted changes or a restricted network — use the local
-path and do not route them to hosted signup. `evalgate init --local` needs no
-credential and no network. Running inside a cloud sandbox is not by itself a
-reason to choose either path: decide from intent, connectivity, and
+path and do not route them to hosted signup. `npx @evalgate/sdk init --local`
+needs no credential and no network. Running inside a cloud sandbox is not by
+itself a reason to choose either path: decide from intent, connectivity, and
 demonstrated authority, not from where the agent happens to execute.
 
 Match evidence to the exact target snapshot, even if another scan completes
@@ -132,53 +143,14 @@ the capability contract, and the exact command help. Read those from the
 runtime rather than from this document: the capability map and machine-readable
 report are authoritative, and a version pinned in prose goes stale while the
 contract keeps moving. Do not invent provider flags, numeric exit meanings, or
-hosted routes from an older SDK.
+hosted routes from an older SDK. Verify the live vocabulary against
+`npx @evalgate/sdk capabilities --format json`. `gate` is
+deterministic/offline by default, and `--allow-network` is the explicit opt-in
+for provider-backed project evaluators. Use `--dry-run` only as a preview,
+never as release evidence.
 
-The vocabulary below has held from 3.8 through the published 3.10.x contract
-(`2026-09-03`), but verify it against `capabilities --format json` rather than
-assuming it. `gate` is deterministic/offline by default, and `--allow-network`
-is the explicit opt-in for provider-backed project evaluators. Use `--dry-run`
-only as a preview, never as release evidence.
-
-Classify the evidence mode separately from the product verdict:
-
-- `offline`: deterministic local checks only;
-- `network`: a provider-backed execution actually ran;
-- `mixed`: both kinds of evidence are present;
-- `cache_only`: an eligible cached observation was reused without new model
-  inference.
-
-For every provider-backed result, preserve the requested and effective
-provider/model identity, execution state, calibration state, cache lineage,
-case and slice counts, and any request or run IDs. The provider vocabulary
-distinguishes `executed`, `cache_reused`, `deferred_by_policy`,
-`provider_unavailable`, `model_retired`, `authentication_failed`,
-`timed_out`, `malformed_response`, `policy_blocked`, and other states. Apply
-the report's `requiredNow`, `freshCacheAllowed`, `deferredAllowed`, and fresh
-calibration policy rather than guessing:
-
-- an unavailable provider means quality is **not determined** and readiness is
-  blocked or inconclusive, not a product regression and not a pass;
-- a deferred obligation remains unresolved and is not PASS;
-- admission policy fields `requiredNow`/`required_now`,
-  `freshCacheAllowed`/`fresh_cache_allowed`, and
-  `deferredAllowed`/`deferred_allowed` (and, when present,
-  `requireFreshCalibration`) govern whether evidence is eligible now;
-- when fresh calibration is required, `stale` or `not_comparable` calibration
-  cannot establish current provider trust;
-- a cache hit is usable only when canonical identity and freshness are eligible
-  under the active policy. Retain original execution/model lineage and report
-  zero new inference cost; never call it an independent trial;
-- a fallback provider/model is valid only when explicitly authorized and fully
-  recorded. Never silently substitute one.
-
-For a judge request, verify the operational path in the evidence rather than
-accepting a cache design claim: canonical request identity → authorized cache
-lookup → eligible fresh hit (reuse original lineage, record `cache_reused`, and
-incur `$0` new inference) **or** Model Gateway execution → provider/model call
-and cost ledger → cache write. A missing identity, authorization, freshness,
-lineage, cost, or write receipt leaves the run incomplete and therefore
-inconclusive; it is not proof that the cache is operational.
+Read `references/provider-and-cache.md` for provider states, admission policy,
+cache lineage, judge operational path, and network semantics.
 
 Release evidence has independent dimensions. Inspect the machine report for
 verdict, gate mode, case/slice outcomes, `decisionPassed`, `reportingPassed`,
@@ -186,8 +158,9 @@ verdict, gate mode, case/slice outcomes, `decisionPassed`, `reportingPassed`,
 `releaseReady`. A passing score, a zero process exit, or a final answer alone
 does not establish release readiness. Active golden agent cases require a
 complete trajectory observation for the tool path, order, arguments, and
-outcomes; missing or truncated observations fail closed, and an unsafe
-intermediate tool action remains a failure even when the final answer is right.
+outcomes; missing or truncated observations fail closed as
+`trajectory_evidence_missing` (exit `REGRESSION`), and an unsafe intermediate
+tool action remains a failure even when the final answer is right.
 
 For red-team or framework-control work, use the hosted capability and scoped
 API only when discovered in the installed contract. Keep attack evidence and
@@ -197,23 +170,24 @@ compliance, certification, endorsement, partnership, or affiliation.
 
 In the published capability map, red-team is a cloud capability at the
 `/red-team` workspace. The documented CLI/API discovery entry is
-`evalgate api get_red_team_workspace --format json`; campaign, run, finding,
-promotion, and signed-report operations are exposed by the returned contract,
-not by an invented local command. Missing observations or a provider failure
-remain incomplete evidence, not a passing control result.
+`npx @evalgate/sdk api get_red_team_workspace --format json`; campaign, run,
+finding, promotion, and signed-report operations are exposed by the returned
+contract, not by an invented local command. Missing observations or a provider
+failure remain incomplete evidence, not a passing control result.
 
 ## Evaluate and classify
 
 Run the smallest sufficient suite, then inspect case-level and slice-level
 evidence rather than only the aggregate score. Classify the result with exactly
-one canonical value: `not_applicable`, `behavioral_change`, `experiment`,
-`coverage_gap`, `infrastructure_failure`, `regression`, `improvement`,
-`tradeoff`, or `inconclusive`.
+one canonical value: `not_applicable`, `not_a_change`, `behavioral_change`,
+`experiment`, `coverage_gap`, `infrastructure_failure`, `regression`,
+`improvement`, `tradeoff`, or `inconclusive`.
 
 Read `references/decision-contract.md` before serializing
-or persisting a result. It defines classification precedence and the only valid
-`classification` → `invokeEvalGate` → `releaseDecision` combinations. Never
-invent a synonym or select the release decision independently.
+or persisting a result. It defines classification precedence, the action
+vocabulary, and the only valid `classification` → `invokeEvalGate` →
+`releaseDecision` combinations. Never invent a synonym or select the release
+decision independently.
 
 Read `references/regression-analysis.md` for failure and
 slice analysis, `references/experiment-analysis.md` for
@@ -228,6 +202,10 @@ candidate, silently move a baseline, suppress failures, cherry-pick trials,
 discard inconvenient evidence, reduce coverage without explanation, bypass a
 gate, mutate historical evidence, or call judge disagreement proof of product
 correctness. A better aggregate does not excuse a protected-slice regression.
+
+Treat `explain`'s `suggestedFixes` as hints only. Never act on a baseline
+update it suggests; that requires the explicit review in
+[run-regression-gate](../run-regression-gate/SKILL.md) step 6.
 
 When a legitimate regression appears, fix the implementation and rerun the
 affected scope. Baseline changes require explicit review of an intentional

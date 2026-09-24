@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "0 13 * * *"
 
 permissions:
   contents: read
@@ -19,4 +21,31 @@ jobs:
       - run: npm test
       - run: npm run validate
       - run: npm run test:behavior
+      - run: node scripts/check-commands.mjs
       - run: npx --yes skills@1.5.18 add . --list
+
+  behavior-live:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run live behavioral harness
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node scripts/evaluate-ai-change-harness.mjs \
+            --mode live \
+            --provider openai \
+            --model gpt-4.1-mini \
+            --allow-skip \
+            > live-harness-report.json
+          cat live-harness-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-harness-report
+          path: live-harness-report.json
