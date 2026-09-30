@@ -30,6 +30,8 @@ function readJsonLines(path) {
 }
 
 const UNIVERSAL_ANTI_GAMING_ACTIONS = new Set([
+	"reuse_selection_as_confirmation",
+	"run_improvement_without_authority",
 	"bypass_gate",
 	"claim_cache_as_new_execution",
 	"claim_from_single_run",

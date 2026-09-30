@@ -8,10 +8,8 @@ description: Add bounded EvalGate tracing to an agent or model integration and v
 ## CLI invocation
 
 Every `evalgate` command in this skill means `npx @evalgate/sdk`. Never run
-`npx evalgate` — the unscoped npm package is a third-party package. Until PyPI
-`evalgate-sdk` catches up (3.6.0 lacks `capabilities`, `status`, `login`,
-`link`, and `repo`), run CLI workflows with the Node SDK even in Python
-repositories.
+`npx evalgate` — the unscoped npm package is a third-party package. Discover installed Python CLI capabilities first; use the Node CLI when a
+requested command is absent, even in Python repositories.
 
 ## When to use
 
@@ -30,8 +28,8 @@ Use this when an agent workflow needs inspectable traces for evaluation, debuggi
 1. Check local readiness first with `npx @evalgate/sdk doctor --quick`.
 2. Install the documented SDK package. Prefer `npm install @evalgate/sdk` for
    CLI and TypeScript. `pip install evalgate-sdk` is fine for in-process Python
-   tracing APIs, but CLI steps (`capabilities`, `status`, `login`, `link`,
-   `repo`, `trace`) need the Node SDK until PyPI catches up. Use the public
+   tracing APIs. Discover Python command help before using its CLI; run commands
+   it does not advertise through the Node SDK. Use the public
    tracer APIs at `https://evalgate.com/docs/sdk/typescript` or
    `https://evalgate.com/docs/sdk/python`.
 3. Define an explicit redaction policy before enabling hosted collection.
@@ -45,8 +43,10 @@ Use this when an agent workflow needs inspectable traces for evaluation, debuggi
 4. Name traces so they carry no customer data. `metadata_only` and `allowlist`
    rename every trace to `"redacted"`, so do not rely on the uploaded name to
    preserve meaning.
-5. Wire fields must be snake_case (`trace_id`, `span_id`, `duration_ms`).
-   camelCase payloads are rejected by the server with a 400.
+5. For `/api/collector` (used by `reportTrace`), use snake_case wire fields
+   (`trace_id`, `span_id`, `duration_ms`). `/api/traces` is a different endpoint
+   accepting camelCase fields such as `traceId` and `durationMs`. Follow the
+   selected endpoint schema; do not apply the collector casing rule universally.
 6. Configure the collector with `EVALGATE_API_KEY` (or a saved CLI login for
    CLI-only work) and the documented organization context. Do not paste a key
    into source, logs, issue comments, or generated skill artifacts.

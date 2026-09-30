@@ -21,9 +21,10 @@ Reach for this skill when an MCP-capable agent needs EvalGate guidance or attrib
 
 ## Configure the servers
 
-Paste these entries into the client's MCP configuration (Cursor
-`.cursor/mcp.json`, Claude Desktop, or the project's `.mcp.json`). Never commit
-a token.
+Use the format documented for the actual client. The example below is for
+**Claude Code project `.mcp.json`**, which expands `${EVALGATE_API_KEY}` from
+the process environment. It is not a universal Desktop or Cursor configuration.
+Never commit a literal token.
 
 ```json
 {
@@ -43,12 +44,42 @@ a token.
 }
 ```
 
+For **Cursor `.cursor/mcp.json`**, use URL entries and its `${env:NAME}` syntax:
+
+```json
+{
+  "mcpServers": {
+    "evalgate-docs": { "url": "https://www.evalgate.com/api/mcp/docs" },
+    "evalgate-product": {
+      "url": "https://www.evalgate.com/api/mcp",
+      "headers": { "Authorization": "Bearer ${env:EVALGATE_API_KEY}" }
+    }
+  }
+}
+```
+
+For **Claude Desktop / claude.ai**, add the remote docs URL through the custom
+connector UI. Remote connectors differ from local Desktop server configuration;
+do not paste Claude Code JSON into `claude_desktop_config.json`. Product access
+requires a client-supported authentication flow. Do not assume arbitrary bearer
+headers or EvalGate OAuth interoperability were tested in the Desktop connector.
+If the client cannot supply the required credential, use an authorized client
+with header support instead of claiming it is connected.
+
+Client syntax sources (reviewed 2026-09-30):
+[Claude Code MCP](https://code.claude.com/docs/en/mcp),
+[Cursor MCP](https://cursor.com/docs/mcp), and
+[Claude remote connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+These are documented formats; no live client handshake was performed here.
+
 The docs server is anonymous and public-content-only. The product server needs
 a token: anonymous tool calls return `401`. Keep the bearer value in the
 client's secret store, not in a checked-in header.
 
 Published plugin manifests in this repository (`mcp.json`, `.mcp.json`) list
-the same URLs without credentials.
+the same URLs without credentials. `mcp.json` uses the Agent Plugins schema
+transport name `streamable-http`; `.mcp.json` uses Claude Code's `http` name.
+Both describe Streamable HTTP, not different endpoints.
 
 ## Safe workflow
 
@@ -59,8 +90,8 @@ the same URLs without credentials.
 5. Treat `project.plan` as advisory. Use the CLI or web control plane for approved mutations; this plugin does not authorize baseline changes, run starts, credential changes, or pull-request comments.
 
 When MCP evidence informs an AI-change decision, use the primary
-[evaluate-ai-change](../evaluate-ai-change/SKILL.md) workflow and its
-[canonical decision contract](../evaluate-ai-change/references/decision-contract.md).
+[evaluate-ai-change](https://github.com/evalgate/skills/blob/main/skills/evaluate-ai-change/SKILL.md) workflow and its
+[canonical decision contract](references/decision-contract.md).
 MCP tools supply read-only evidence; they do not create a second classification
 enum, derive a release decision, or authorize the resulting action.
 

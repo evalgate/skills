@@ -1,6 +1,6 @@
 {
 	"name": "@evalgate/agent-skills-distribution",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"private": true,
 	"description": "Validation and behavioral evaluation contracts for the public EvalGate Agent Skills distribution.",
 	"type": "module",
@@ -8,8 +8,10 @@
 		"test": "node tests/run.mjs",
 		"validate": "node scripts/validate-distribution.mjs",
 		"test:behavior": "node scripts/evaluate-ai-change-harness.mjs --mode fixture",
-		"test:behavior:live": "node scripts/evaluate-ai-change-harness.mjs --mode live --allow-skip",
-		"check:commands": "node scripts/check-commands.mjs"
+		"test:behavior:live": "node scripts/evaluate-ai-change-harness.mjs --mode live",
+		"check:commands": "node scripts/check-commands.mjs",
+		"export:website": "node scripts/export-website.mjs",
+		"check:standalone": "node scripts/check-standalone.mjs"
 	},
 	"engines": {
 		"node": ">=20"

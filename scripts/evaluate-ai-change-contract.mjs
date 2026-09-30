@@ -27,6 +27,7 @@ const allowedFields = new Set([
 	"classification",
 	"releaseDecision",
 	"actions",
+	"actionKinds",
 	"evidenceSummary",
 	// Which skill the request was routed to, and any authority the route
 	// asked for. Optional: a decision result that reports neither is still a
@@ -61,6 +62,13 @@ export function validateDecisionCore(value, { requireScenarioId = false } = {}) 
 		new Set(value.actions).size !== value.actions.length) {
 		failures.push("actions must be unique non-empty strings");
 	}
+	if (value.actionKinds !== undefined &&
+		(!Array.isArray(value.actionKinds) ||
+		value.actionKinds.some((kind) => !decisionSchema.$defs.actionKind.enum.includes(kind)) ||
+		new Set(value.actionKinds).size !== value.actionKinds.length)) {
+		failures.push("actionKinds must be unique canonical action kinds");
+	}
+
 	if (classifications.includes(value.classification)) {
 		const expectedDecision = releaseDecisionByClassification[value.classification];
 		if (value.releaseDecision !== expectedDecision) {

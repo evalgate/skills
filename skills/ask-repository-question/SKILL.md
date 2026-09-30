@@ -68,13 +68,13 @@ Continue into whichever of these the evidence supports:
 - **Offer to protect what already works.** Correct current behavior with no
   regression coverage is the most common gap a clean scan exposes. Propose the
   smallest durable case that would fail if that behavior changed, and route to
-  [setup-evalgate-project](../setup-evalgate-project/SKILL.md) or
-  [run-regression-gate](../run-regression-gate/SKILL.md) only if the team
+  [setup-evalgate-project](https://github.com/evalgate/skills/blob/main/skills/setup-evalgate-project/SKILL.md) or
+  [run-regression-gate](https://github.com/evalgate/skills/blob/main/skills/run-regression-gate/SKILL.md) only if the team
   wants it.
 - **State what static inspection cannot settle.** Prompt quality, tool-call
   trajectories, latency, and cost are not visible in a source read. If the
   question needs them, say so and route to
-  [collect-agent-traces](../collect-agent-traces/SKILL.md).
+  [collect-agent-traces](https://github.com/evalgate/skills/blob/main/skills/collect-agent-traces/SKILL.md).
 
 Keep the boundary intact throughout: a detection is a detection. Proposing
 coverage for behavior the scan detected is not a claim that the behavior was
