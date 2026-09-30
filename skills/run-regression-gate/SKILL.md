@@ -95,7 +95,7 @@ interpretation. Mark the execution as invalid/infrastructure failure, preserve
 the raw-safe diagnostic, and leave release readiness inconclusive.
 
 Read
-[provider and cache semantics](../evaluate-ai-change/references/provider-and-cache.md)
+[provider and cache semantics](references/provider-and-cache.md)
 for provider states (`provider_unavailable`, `cache_reused`, and related
 admission fields), cache lineage, and network semantics. An `unknown` provider
 state or unknown non-zero process status is infrastructure/inconclusive until

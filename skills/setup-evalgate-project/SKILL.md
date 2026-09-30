@@ -19,7 +19,7 @@ against.
 Do not use it merely to answer a question about a repository. A connected
 repository with a read scope can reach evidence-linked understanding with no
 scaffold and no write access — see
-[ask-repository-question](../ask-repository-question/SKILL.md). Scaffolding is
+[ask-repository-question](https://github.com/evalgate/skills/blob/main/skills/ask-repository-question/SKILL.md). Scaffolding is
 the step that follows a decision to measure something, not the price of
 looking.
 
@@ -63,7 +63,7 @@ never request or print its value in chat.
 3. Decide whether this run needs hosted state at all. A local scaffold does
    not: go straight to the reviewed plan below and use `--local`. If the team
    wants hosted linkage or cloud evidence, read the canonical
-   [authentication and credential handoff reference](../evaluate-ai-change/references/authentication-and-credential-handoff.md),
+   [authentication and credential handoff reference](references/authentication-and-credential-handoff.md),
    then confirm a credential without printing it:
    `npx @evalgate/sdk whoami` and `npx @evalgate/sdk status --json`. If
    absent, use `npx @evalgate/sdk login` for a person, or ask an organization

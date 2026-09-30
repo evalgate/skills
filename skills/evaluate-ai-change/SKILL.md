@@ -1,6 +1,6 @@
 ---
 name: evaluate-ai-change
-description: Determine and execute the smallest defensible EvalGate workflow for a change that may affect AI behavior. Use for prompts, models, tools, agents, retrieval, skills, MCP, judges, datasets, routing, safety, cost, latency, or release policy; skip it for changes proven not to affect observable AI behavior.
+description: Determine and execute the smallest defensible EvalGate workflow for a change that may affect AI behavior. Use for prompts, models, tools, agents, retrieval, skills, MCP, judges, datasets, routing, safety, cost, latency, release policy, external optimization imports, or governed improvement and confirmation cycles; skip it for changes proven not to affect observable AI behavior.
 ---
 
 # Evaluate an AI change
@@ -11,10 +11,9 @@ evidence, history, permissions, and enforcement.
 ## CLI invocation
 
 Every `evalgate` command in this skill means `npx @evalgate/sdk`. Never run
-`npx evalgate` — the unscoped npm package is a third-party package. Until PyPI
-`evalgate-sdk` catches up with the Node SDK (3.6.0 lacks `capabilities`,
-`status`, `login`, `link`, and `repo`), run CLI workflows with
-`npx @evalgate/sdk` even in Python repositories.
+`npx evalgate` — the unscoped npm package is a third-party package. Discover the installed Python CLI before choosing it. If the requested command
+is absent, run `npx @evalgate/sdk` even in Python repositories. Do not equate a
+source-tree Python version with a published package.
 
 ## Decide whether evaluation is required
 
@@ -64,6 +63,14 @@ Use `references/eval-authoring.md` when new coverage is
 needed. Do not invent a parallel configuration when the repository already has
 a canonical EvalGate workflow.
 
+## Standalone installation
+
+This skill bundles its decision schema and references. Load a routed sibling from
+`../<skill-name>/SKILL.md` when installed; otherwise use its canonical source link
+below. Do not assume sibling files exist. The primary loop remains usable offline:
+inspect capabilities and the existing evaluation flow, run the authorized gate,
+and report its evidence without requiring an additional install.
+
 ## Select the workflow
 
 Route on what the caller asked for and what their context already authorizes.
@@ -89,17 +96,20 @@ Then:
 
 | Intent | Authorized context | Workflow |
 | --- | --- | --- |
-| Understand a system, or scope a change before touching it | Durable linkage + EvalGate credential, evidence for the exact target snapshot already exists | [ask-repository-question](../ask-repository-question/SKILL.md) — no scaffold, no GitHub repository-write access |
+| Understand a system, or scope a change before touching it | Durable linkage + EvalGate credential, evidence for the exact target snapshot already exists | [ask-repository-question](https://github.com/evalgate/skills/blob/main/skills/ask-repository-question/SKILL.md) — no scaffold, no GitHub repository-write access |
 | Understand a system | Durable linkage + read scope, but no evidence for the required snapshot | Name the missing evidence and the exact authority a scan needs. Do not answer from a different snapshot and do not guess. |
 | Understand a system | No linkage yet | Offer the supported identity, consent, and linkage handoff. No local scaffold is required to get there. |
 | Understand a system | Local checkout only | `npx @evalgate/sdk understand --format json` |
 | Create the missing evidence | EvalGate `eval:write` and member role | Start a scan. This mints EvalGate evidence; it does not need and must not request GitHub repository-write access. |
-| Evaluate a specific change | Reviewed scaffold and baseline exist | [run-regression-gate](../run-regression-gate/SKILL.md) |
+| Evaluate a specific change | Reviewed scaffold and baseline exist | [run-regression-gate](https://github.com/evalgate/skills/blob/main/skills/run-regression-gate/SKILL.md) |
 | Gate a release, and the caller named an existing gate | That gate exists | Use it directly. Do not route a caller with a working gate through onboarding. |
-| Evaluate a specific change | No reviewed scaffold, and the caller wants durable coverage | [setup-evalgate-project](../setup-evalgate-project/SKILL.md) |
-| Explain behavior a static read cannot | Runtime evidence missing | [collect-agent-traces](../collect-agent-traces/SKILL.md) |
-| Get reference material | Public documentation only | [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md) — no signup |
-| Get scoped product state | A read scope | [use-evalgate-mcp](../use-evalgate-mcp/SKILL.md) |
+| Evaluate a specific change | No reviewed scaffold, and the caller wants durable coverage | [setup-evalgate-project](https://github.com/evalgate/skills/blob/main/skills/setup-evalgate-project/SKILL.md) |
+| Inspect an AI-generated change or external optimization result | Local artifact available | Discover whether `import` is advertised; when available, use its local `inspect` action. Read [governed workflows](references/governed-workflows.md). Import authority is investigation only. |
+| Inspect or run an improvement cycle | Scoped hosted context | Discover `npx @evalgate/sdk improve --help`; inspect the cycle before an authorized run. Read [governed workflows](references/governed-workflows.md). |
+| Confirm a candidate | Frozen candidate and eligible confirmation evidence | Inspect `improve confirmation` lineage; use the discovered confirmation-only run action only with authority. Never reuse selection evidence as confirmation. |
+| Explain behavior a static read cannot | Runtime evidence missing | [collect-agent-traces](https://github.com/evalgate/skills/blob/main/skills/collect-agent-traces/SKILL.md) |
+| Get reference material | Public documentation only | [use-evalgate-mcp](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md) — no signup |
+| Get scoped product state | A read scope | [use-evalgate-mcp](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md) |
 
 Prefer the least authority that answers the question. A durably linked
 repository with no scaffold and no GitHub repository-write access can already
@@ -205,7 +215,7 @@ correctness. A better aggregate does not excuse a protected-slice regression.
 
 Treat `explain`'s `suggestedFixes` as hints only. Never act on a baseline
 update it suggests; that requires the explicit review in
-[run-regression-gate](../run-regression-gate/SKILL.md) step 6.
+[run-regression-gate](https://github.com/evalgate/skills/blob/main/skills/run-regression-gate/SKILL.md) step 6, or the bundled [release-gate reference](references/release-gates.md) when the sibling is not installed.
 
 When a legitimate regression appears, fix the implementation and rerun the
 affected scope. Baseline changes require explicit review of an intentional

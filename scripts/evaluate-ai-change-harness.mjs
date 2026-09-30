@@ -66,6 +66,8 @@ function assembleSkillBundle() {
 		"regression-analysis.md",
 		"release-gates.md",
 		"troubleshooting.md",
+		"provider-and-cache.md",
+		"governed-workflows.md",
 		"authentication-and-credential-handoff.md",
 	];
 	return [

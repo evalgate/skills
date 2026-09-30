@@ -52,7 +52,7 @@ for (const requiredReadmeText of [
 	"npx skills add evalgate/skills",
 	"--list",
 	"skills/evaluate-ai-change/SKILL.md",
-	"EvalGate SDK 3.12.3",
+	"evaluations/runtime-contract.json",
 	"There is no npm package named `@evalgate/skills`",
 	"https://evalgate.com",
 	"https://www.evalgate.com/docs/sdk/cli",
@@ -87,6 +87,7 @@ for (const skillName of skillNames) {
 	for (const match of content.matchAll(
 		/\[[^\]]+\]\(([^)]+\.(?:json|md))\)/gu,
 	)) {
+		if (/^https?:\/\//u.test(match[1])) continue;
 		const target = resolve(dirname(skillPath), match[1]);
 		if (!existsSync(target) || !statSync(target).isFile()) {
 			failures.push(`${skillName}: missing reference ${match[1]}`);

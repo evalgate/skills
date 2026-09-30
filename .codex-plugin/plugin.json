@@ -1,6 +1,6 @@
 {
 	"name": "evalgate",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "Portable EvalGate workflows for behavioral-change analysis, evaluation evidence, regression gates, traces, and repository questions.",
 	"author": {
 		"name": "EvalGate",
@@ -9,7 +9,13 @@
 	},
 	"homepage": "https://evalgate.com/developers",
 	"license": "MIT",
-	"keywords": ["evals", "regression", "observability", "agents", "testing"],
+	"keywords": [
+		"evals",
+		"regression",
+		"observability",
+		"agents",
+		"testing"
+	],
 	"skills": "./skills",
 	"mcpServers": "./.mcp.json",
 	"interface": {

@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
   schedule:
     - cron: "0 13 * * *"
 
@@ -25,7 +26,7 @@ jobs:
       - run: npx --yes skills@1.5.18 add . --list
 
   behavior-live:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +42,6 @@ jobs:
             --mode live \
             --provider openai \
             --model gpt-4.1-mini \
-            --allow-skip \
             > live-harness-report.json
           cat live-harness-report.json
       - uses: actions/upload-artifact@v4

@@ -3,13 +3,33 @@
 // or when the truth ledger records an SDK version older than npm latest.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const sdk = process.env.EVALGATE_SDK ?? "@evalgate/sdk@latest";
+// Resolve the package once. Re-running npx for every help query repeatedly
+// performs registry/install work and can mix versions during a release.
+const resolveCli = [
+ 'const fs = require("node:fs"), path = require("node:path");',
+ 'for (const dir of process.env.PATH.split(path.delimiter)) {',
+ ' const file = path.join(dir, process.platform === "win32" ? "evalgate.cmd" : "evalgate");',
+ ' if (!fs.existsSync(file)) continue;',
+ ' const resolved = fs.realpathSync(file);',
+ ' const root = path.resolve(path.dirname(resolved), "../..");',
+ ' const manifest = path.join(root, "package.json");',
+ ' if (fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest)).name === "@evalgate/sdk") { console.log(path.join(root, "dist/cli/index.js")); process.exit(0); }',
+ '}',
+ 'throw new Error("Could not resolve installed @evalgate/sdk CLI");',
+].join("\n");
+const cli = process.env.EVALGATE_SDK_CLI ?? execFileSync(
+ "npx", ["--yes", "--package", sdk, "--", "node", "-e", resolveCli],
+ { encoding: "utf8", timeout: 120_000 },
+).trim();
+const invoke = (args, options = {}) => execFileSync(process.execPath, [resolve(cli), ...args], { encoding: "utf8", timeout: 30_000, ...options });
+
 const caps = JSON.parse(
-	execFileSync("npx", ["-y", sdk, "capabilities", "--format", "json"], {
+	invoke(["capabilities", "--format", "json"], {
 		encoding: "utf8",
 	}),
 );
@@ -26,6 +46,7 @@ walk(join(root, "skills"));
 const re =
 	/(?:`|^\s*)(?:npx (?:-y )?@evalgate\/sdk(?:@[\w.-]+)? |evalgate )([a-z][a-z-]*)(?: ([a-z][a-z-]*))?/g;
 const problems = [];
+const helpCache = new Map();
 for (const f of files) {
 	readFileSync(f, "utf8")
 		.split("\n")
@@ -37,11 +58,15 @@ for (const f of files) {
 				}
 				const help = (() => {
 					try {
-						return execFileSync(
-							"npx",
-							["-y", sdk, m[1], ...(m[2] ? [m[2]] : []), "--help"],
+						const args = [m[1], ...(m[2] ? [m[2]] : []), "--help"];
+						const key = args.join(" ");
+						if (helpCache.has(key)) return helpCache.get(key);
+						const output = invoke(
+							args,
 							{ encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
 						);
+						helpCache.set(key, output);
+						return output;
 					} catch (e) {
 						return String(e.stdout ?? "") + String(e.stderr ?? "");
 					}
@@ -53,6 +78,25 @@ for (const f of files) {
 				}
 			}
 		});
+}
+
+const snapshotPath = join(root, "evaluations/runtime-contract.json");
+const snapshot = {
+ sdkVersion: caps.sdkVersion,
+ contractVersion: caps.contractVersion,
+ capabilityCount: caps.capabilities.length,
+ commands: [...known].sort(),
+};
+if (process.argv.includes("--update-ledger")) {
+ writeFileSync(snapshotPath, JSON.stringify(snapshot, null, "\t") + "\n");
+ const ledger = join(root, "evaluations/convergence-truth-ledger.md");
+ writeFileSync(ledger, readFileSync(ledger, "utf8")
+   .replace(/SDK(?:@|\s+)\d+\.\d+\.\d+/gu, `SDK ${caps.sdkVersion}`)
+   .replace(/@evalgate\/sdk@\d+\.\d+\.\d+/gu, `@evalgate/sdk@${caps.sdkVersion}`)
+   .replace(/\d+ capabilities, \d+ commands/gu, `${snapshot.capabilityCount} capabilities, ${known.size} commands`)
+   .replace(/contract `[^`]+`/gu, `contract \`${caps.contractVersion}\``));
+} else if (!existsSync(snapshotPath) || JSON.stringify(JSON.parse(readFileSync(snapshotPath, "utf8"))) !== JSON.stringify(snapshot)) {
+ problems.push("runtime-contract.json differs from installed runtime; review check-commands.mjs --update-ledger");
 }
 
 const ledgerPath = join(root, "evaluations/convergence-truth-ledger.md");

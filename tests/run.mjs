@@ -46,6 +46,7 @@ const notMeasuredEvidenceSummary = Object.fromEntries(
 );
 
 run(["scripts/validate-distribution.mjs"], 0);
+run(["tests/distribution-regressions.mjs"], 0);
 run(
 	[
 		"scripts/score-skill-evaluation.mjs",
@@ -72,7 +73,7 @@ assert.ok(
 );
 assert.equal(fixtureHarnessReport.score.passed, true);
 assert.equal(fixtureHarnessReport.parsePassed, true);
-assert.equal(fixtureHarnessReport.distributionVersion, "1.2.0");
+assert.equal(fixtureHarnessReport.distributionVersion, JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")).version);
 const liveWithoutAdapter = run(
 	["scripts/evaluate-ai-change-harness.mjs", "--mode", "live"],
 	2,
