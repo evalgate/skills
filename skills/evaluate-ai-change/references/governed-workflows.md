@@ -109,3 +109,9 @@ contract, starting release review, adopting a candidate, and merging. EvalGate
 refuses those from API keys and MCP tokens, and never merges. A cost claim
 needs measured cost on both sides plus confirmation; otherwise report
 `not_measured` or selection evidence only.
+
+For scheduled campaigns, `npx @evalgate/sdk auto dispatch --open-pr` runs the
+approved plan unattended in an isolated worktree. Exit code 3 means it
+refused (missing or stale approval, dirty base, overlapping run, or the
+per-approval cap). Report the refusal code to the user; never re-approve the
+plan or edit the approval to make a schedule pass.
