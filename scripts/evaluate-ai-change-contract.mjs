@@ -34,6 +34,7 @@ const allowedFields = new Set([
 	// valid contract, so existing scenarios are unaffected.
 	"routedSkill",
 	"requestedAuthority",
+	"capabilityChecks",
 ]);
 
 export function validateDecisionCore(value, { requireScenarioId = false } = {}) {

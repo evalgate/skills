@@ -89,6 +89,13 @@ Both describe Streamable HTTP, not different endpoints.
 4. Use the docs server for reference retrieval and cite the returned document identifiers. Use the product server for organization-scoped state and evidence.
 5. Treat `project.plan` as advisory. Use the CLI or web control plane for approved mutations; this plugin does not authorize baseline changes, run starts, credential changes, or pull-request comments.
 
+The same boundary applies to portable-quality workflows. This reviewed MCP
+contract does not expose resource upload, check submission, feedback, standard
+acceptance, background grants, or cross-host delivery. Do not translate a
+user's request for one of those actions into a similarly named read tool. Use
+the current capability schema to discover a future supported operation; if it
+is absent, return the exact setup gap and do not claim the action ran.
+
 When MCP evidence informs an AI-change decision, use the primary
 [evaluate-ai-change](https://github.com/evalgate/skills/blob/main/skills/evaluate-ai-change/SKILL.md) workflow and its
 [canonical decision contract](references/decision-contract.md).

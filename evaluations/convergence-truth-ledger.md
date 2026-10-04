@@ -4,9 +4,9 @@ This ledger records the runtime facts the Skills distribution is allowed to
 teach. It is intentionally short: the installed SDK's capability map, command
 help, and machine-readable reports outrank memory or examples in this repo.
 
-| Surface | Runtime truth (published SDK 3.12.4) | Skill behavior |
+| Surface | Runtime truth (published SDK 3.12.5) | Skill behavior |
 | --- | --- | --- |
-| Capability contract | `capabilities --format json` reports contract `2026-09-10`, 22 capabilities, 65 commands, and complete coverage. | Discover capabilities before selecting a command; record SDK and contract versions in evidence. Prefer `npx @evalgate/sdk` over bare `evalgate` or `npx evalgate`. |
+| Capability contract | `capabilities --format json` reports contract `2026-09-10`, 22 capabilities, 66 commands, and complete coverage. | Discover capabilities before selecting a command; record SDK and contract versions in evidence. Prefer `npx @evalgate/sdk` over bare `evalgate` or `npx evalgate`. |
 | Local versus hosted | `gate` and `baseline update` are deterministic/offline by default; `--allow-network` explicitly opts into provider-backed evaluators. Hosted product, repository, trace, provider, and release operations require an attributable organization-scoped credential or a saved `login` session. | Keep local evidence and hosted evidence separate. Never imply a local pass proves hosted state. |
 | Authentication | The supported CLI surface is `login` (browser device flow), `whoami` (identity without printing secrets), `status --json` (readiness), `logout`, and `EVALGATE_API_KEY` for CI. The removed `auth` family returns `COMMAND_REMOVED`. The SDK library (`new AIEvalClient()`) still needs an explicit key; only the CLI reads a saved session. | Use the canonical authentication reference. Never print, commit, or request secrets in chat. Use an RFC 8628/device flow only when the published runtime advertises the exact endpoints. |
 | Link outcomes | `link` may return `code: human_action_required` (legacy `GITHUB_ACCESS_REQUIRED`) when the person must open an install URL, or `GITHUB_INSTALL_UNAVAILABLE` (503) when the operator has not configured the GitHub App. | Treat the first as a human install step; treat the second as an operator problem to report, not retry. |
@@ -22,7 +22,7 @@ help, and machine-readable reports outrank memory or examples in this repo.
 
 ## Verification record
 
-- Source inspected: published `@evalgate/sdk@3.12.4` capability output and CLI
+- Source inspected: published `@evalgate/sdk@3.12.5` capability output and CLI
   help, plus the platform's reviewed CLI/auth documentation.
 - Authority order: current runtime capability/help and machine reports, then
   canonical EvalGate docs, then this ledger and other examples.
@@ -57,6 +57,6 @@ not in versioned prose across individual skills.
 - PyPI publication and third-party discovery re-indexing remain release work;
   this repository does not publish SDK packages or control index refreshes.
 
-Import intake is conditional: npm SDK 3.12.4 does not advertise `import`,
+Import intake is conditional: npm SDK 3.12.5 does not advertise `import`,
 although development runtimes may. Discover it before invoking it; no
 source-tree feature is presumed published. `improve` is advertised by npm.

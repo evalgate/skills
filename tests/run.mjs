@@ -217,6 +217,54 @@ assert.ok(
 			failure.reason === "duplicate_result",
 	),
 );
+const portableNoShell = passingResults.find(
+	(result) => result.scenarioId === "portable-no-shell-no-tool",
+);
+const missingCapabilityReport = scoreSkillEvaluation(
+	scenarios,
+	passingResults.map((result) =>
+		result.scenarioId === portableNoShell.scenarioId
+			? { ...portableNoShell, capabilityChecks: ["shell"] }
+			: result,
+	),
+);
+assert.ok(
+	missingCapabilityReport.decisionFailures.some(
+		(failure) =>
+			failure.scenarioId === portableNoShell.scenarioId &&
+			failure.reason === "missing_capability_check",
+	),
+);
+const unauthorizedPortableReport = scoreSkillEvaluation(
+	scenarios,
+	passingResults.map((result) =>
+		result.scenarioId === "portable-consent-denied"
+			? { ...result, requestedAuthority: ["resource_upload"] }
+			: result,
+	),
+);
+assert.ok(
+	unauthorizedPortableReport.decisionFailures.some(
+		(failure) =>
+			failure.scenarioId === "portable-consent-denied" &&
+			failure.reason === "unauthorized_authority_requested",
+	),
+);
+const wrongPortableRouteReport = scoreSkillEvaluation(
+	scenarios,
+	passingResults.map((result) =>
+		result.scenarioId === "portable-nonrepo-artifact"
+			? { ...result, routedSkill: "setup-evalgate-project" }
+			: result,
+	),
+);
+assert.ok(
+	wrongPortableRouteReport.decisionFailures.some(
+		(failure) =>
+			failure.scenarioId === "portable-nonrepo-artifact" &&
+			failure.reason === "wrong_routed_skill",
+	),
+);
 const promotedWithoutEvidence = JSON.parse(
 	JSON.stringify(
 		passingResults.find((result) => result.scenarioId === "validated-improvement"),

@@ -261,6 +261,16 @@ for (const scenario of scenarios) {
 					`${scenario.scenarioId}: routing.skill is also listed as prohibited`,
 				);
 			}
+			for (const field of ["prohibitedAuthority", "requiredCapabilityChecks"]) {
+				if (
+					routing[field] !== undefined &&
+					(!Array.isArray(routing[field]) ||
+						routing[field].some((value) => typeof value !== "string" || value.length === 0) ||
+						new Set(routing[field]).size !== routing[field].length)
+				) {
+					failures.push(`${scenario.scenarioId}: routing.${field} must contain unique non-empty strings`);
+				}
+			}
 		}
 	}
 	const semantic = scenario.expected.semanticExpectations ?? {};
@@ -302,6 +312,21 @@ if (!scenarios.some((scenario) => scenario.scenarioId === "mixed-bug-sweep")) {
 for (const letter of "ABCDEFGHIJKLMNOPQRS") {
 	if (!scenarios.some((scenario) => scenario.scenarioId === `adversarial-${letter}-` || scenario.scenarioId.startsWith(`adversarial-${letter}-`))) {
 		failures.push(`scenario coverage omits adversarial scenario ${letter}`);
+	}
+}
+for (const scenarioId of [
+	"portable-nonrepo-artifact",
+	"portable-coding-no-product-ai",
+	"portable-no-shell-no-tool",
+	"portable-unsupported-background-hook",
+	"portable-resource-operation-unavailable",
+	"portable-consent-denied",
+	"portable-revision-drift",
+	"portable-nonchat-output",
+	"portable-cross-host-reuse-unverified",
+]) {
+	if (!scenarios.some((scenario) => scenario.scenarioId === scenarioId)) {
+		failures.push(`scenario coverage omits ${scenarioId}`);
 	}
 }
 
@@ -367,6 +392,16 @@ const primarySkill = readFileSync(
 	resolve(skillsRoot, "evaluate-ai-change/SKILL.md"),
 	"utf8",
 );
+for (const requiredPortableText of [
+	"portable-artifact-workflows.md",
+	"non-repository artifact",
+	"Product MCP is read-only",
+	"permission are separate facts",
+]) {
+	if (!primarySkill.includes(requiredPortableText)) {
+		failures.push(`primary skill omits portable routing boundary ${requiredPortableText}`);
+	}
+}
 const setupSkill = readFileSync(
 	resolve(skillsRoot, "setup-evalgate-project/SKILL.md"),
 	"utf8",
