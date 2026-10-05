@@ -1,5 +1,5 @@
 {
-	"sdkVersion": "3.12.4",
+	"sdkVersion": "3.12.5",
 	"contractVersion": "2026-09-10",
 	"capabilityCount": 22,
 	"commands": [
@@ -27,6 +27,7 @@
 		"harness",
 		"health",
 		"impact-analysis",
+		"import",
 		"improve",
 		"init",
 		"integrity",

@@ -29,6 +29,15 @@
 			},
 			"description": "Authority the route asked for. Reading, executing, patching, pushing and merging are separate grants; a route must not assume one it was not given."
 		},
+		"capabilityChecks": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"minLength": 1
+			},
+			"uniqueItems": true,
+			"description": "Host capabilities inspected before routing. This reports discovery only and does not grant authority or prove execution."
+		},
 		"invokeEvalGate": {
 			"type": "boolean"
 		},

@@ -8,6 +8,7 @@ import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const sdk = process.env.EVALGATE_SDK ?? "@evalgate/sdk@latest";
+const npxExecutable = process.platform === "win32" ? "npx.cmd" : "npx";
 // Resolve the package once. Re-running npx for every help query repeatedly
 // performs registry/install work and can mix versions during a release.
 const resolveCli = [
@@ -15,16 +16,23 @@ const resolveCli = [
  'for (const dir of process.env.PATH.split(path.delimiter)) {',
  ' const file = path.join(dir, process.platform === "win32" ? "evalgate.cmd" : "evalgate");',
  ' if (!fs.existsSync(file)) continue;',
- ' const resolved = fs.realpathSync(file);',
- ' const root = path.resolve(path.dirname(resolved), "../..");',
- ' const manifest = path.join(root, "package.json");',
- ' if (fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest)).name === "@evalgate/sdk") { console.log(path.join(root, "dist/cli/index.js")); process.exit(0); }',
+ ' const bin = path.dirname(fs.realpathSync(file));',
+ ' for (const root of [path.resolve(bin, "../@evalgate/sdk"), path.resolve(bin, "../..")]) {',
+ '  const manifest = path.join(root, "package.json");',
+ '  if (fs.existsSync(manifest) && JSON.parse(fs.readFileSync(manifest)).name === "@evalgate/sdk") { console.log(path.join(root, "dist/cli/index.js")); process.exit(0); }',
+ ' }',
  '}',
  'throw new Error("Could not resolve installed @evalgate/sdk CLI");',
 ].join("\n");
+// Windows requires a shell to launch npx.cmd. Passing multi-line source as the
+// next argument lets cmd.exe split it at spaces before Node receives `-e`.
+// Encode the resolver so the shell sees one inert argument.
+const resolveCliArgument = process.platform === "win32"
+ ? `eval(Buffer.from('${Buffer.from(resolveCli).toString("base64")}','base64').toString())`
+ : resolveCli;
 const cli = process.env.EVALGATE_SDK_CLI ?? execFileSync(
- "npx", ["--yes", "--package", sdk, "--", "node", "-e", resolveCli],
- { encoding: "utf8", timeout: 120_000 },
+ npxExecutable, ["--yes", "--package", sdk, "--", "node", "-e", resolveCliArgument],
+ { encoding: "utf8", timeout: 120_000, shell: process.platform === "win32" },
 ).trim();
 const invoke = (args, options = {}) => execFileSync(process.execPath, [resolve(cli), ...args], { encoding: "utf8", timeout: 30_000, ...options });
 

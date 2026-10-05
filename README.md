@@ -62,9 +62,10 @@ references using progressive disclosure.
 
 ## Skills
 
-- `evaluate-ai-change` — primary decision framework for behavioral impact,
-  minimum sufficient coverage, result classification, anti-gaming,
-  failure-to-eval conversion, experiments, and release decisions.
+- `evaluate-ai-change` — primary host-neutral decision framework for AI changes,
+  responses, non-repository artifacts, and non-chat events, including minimum
+  sufficient coverage, result classification, anti-gaming, failure-to-eval
+  conversion, experiments, and release decisions.
 - `setup-evalgate-project` — preview and apply a reviewed first project scaffold.
 - `run-regression-gate` — run and interpret a gate without weakening policy.
 - `collect-agent-traces` — add bounded, redacted trace evidence.
@@ -74,6 +75,10 @@ references using progressive disclosure.
 The primary skill uses progressive disclosure: its entry point contains the
 decision loop and routes detailed authoring, regression, experiment, cost,
 provenance, and troubleshooting guidance through focused references.
+Portable artifact checks additionally route to one bundled reference that
+separates host capability from user authority. A Skill install does not grant
+attachment access, add background hooks, or turn the read-only product MCP into
+a mutation surface.
 
 ## Core workflow
 

@@ -1,6 +1,6 @@
 ---
 name: evaluate-ai-change
-description: Determine and execute the smallest defensible EvalGate workflow for a change that may affect AI behavior. Use for prompts, models, tools, agents, retrieval, skills, MCP, judges, datasets, routing, safety, cost, latency, release policy, external optimization imports, or governed improvement and confirmation cycles; skip it for changes proven not to affect observable AI behavior.
+description: Determine and execute the smallest defensible EvalGate workflow for an AI change, response, artifact, or non-chat model event. Use for prompts, models, tools, agents, retrieval, skills, MCP, judges, datasets, routing, safety, cost, latency, release policy, external optimization imports, or governed improvement and confirmation cycles; skip it for work proven not to affect observable AI behavior.
 ---
 
 # Evaluate an AI change
@@ -52,6 +52,15 @@ when impact or scope is ambiguous.
    coverage, missing evidence, and the minimum sufficient evaluation scope.
 6. Ask for approval before writes, tests with meaningful cost or side effects,
    baseline changes, cloud access, credential creation, or release mutations.
+
+For a response, document, table, image, structured prediction, retrieval result,
+or other non-repository artifact, do not require a checkout. Inspect the host's
+actual capabilities first: readable inputs, local tools, shell, configured API
+or MCP tools, authenticated principal, upload support, completion/event hooks,
+asynchronous delivery, and stable artifact/revision identity. Capability and
+permission are separate facts. Read
+`references/portable-artifact-workflows.md` for the bounded workflow and its
+unsupported states.
 
 Steps 3 and 4 are conditional on purpose. A durably linked repository can be
 inspected without a checkout, so requiring a local config before routing would
@@ -110,6 +119,12 @@ Then:
 | Explain behavior a static read cannot | Runtime evidence missing | [collect-agent-traces](https://github.com/evalgate/skills/blob/main/skills/collect-agent-traces/SKILL.md) |
 | Get reference material | Public documentation only | [use-evalgate-mcp](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md) — no signup |
 | Get scoped product state | A read scope | [use-evalgate-mcp](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md) |
+| Check a response or non-repository artifact | Host can read the exact artifact locally | Use this Skill's [portable artifact workflow](references/portable-artifact-workflows.md); do not require repository setup |
+| Check a response or non-repository artifact | No shell, but an authorized API/tool advertises the required operation | Use the advertised operation and preserve its task, artifact, revision, and result identifiers |
+| Check a response or non-repository artifact | Neither a local evaluator nor an authorized operation is available | Report the exact setup/capability gap and unresolved evidence; do not claim execution |
+| Evaluate coding work with no AI on the product path | Inspection proves observable AI behavior cannot change | Classify `not_applicable` and use ordinary repository tests |
+| Start or receive background checks | The host exposes a verified event hook and delivery path, and a bounded grant authorizes both | Use only the advertised hook and authorized scope; otherwise keep evaluation explicitly invoked or post-response advisory |
+| Reuse an approved standard in another host | Same tenant and attributable delegated person, authorized scope, exact standard version, and retrieval operation are verified | Retrieve that version and preserve an independent second-task result; otherwise report the missing identity, permission, or capability |
 
 Prefer the least authority that answers the question. A durably linked
 repository with no scaffold and no GitHub repository-write access can already
@@ -145,6 +160,13 @@ defect, and do not report a clean static read as proof of runtime correctness.
 Prefer `npx @evalgate/sdk capabilities --format json` and the published CLI help
 over remembered commands. Hosted actions require an attributable,
 organization-scoped credential. Never request, print, or commit its value.
+
+An attachment visible in a host UI is not necessarily readable by a remote
+tool. Product MCP is read-only at the reviewed contract: do not use it to
+upload resources, start checks, record feedback, accept standards, or create a
+background grant. Discover later capabilities from current schemas; until such
+an operation is advertised, report it as unavailable and offer the local or
+explicitly invoked supported path.
 
 ## Evidence triage
 
