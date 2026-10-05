@@ -70,3 +70,48 @@ unmeasured cost as `not_measured`; do not invent a price or claim cost
 non-inferiority without valid evidence. Adoption is a human decision record,
 not a live-traffic promotion. Do not invent shadow, canary, promote, or rollback
 CLI actions when the installed help does not advertise them.
+
+## Run a repository improvement campaign
+
+A campaign improves one prompt in the user's repository on an isolated
+branch, then confirms the kept candidate on cases the optimizer never saw.
+Discover the runtime first:
+
+```bash
+npx @evalgate/sdk auto --help
+```
+
+If the installed help does not list `contract`, `review`, `freeze`, `export`
+and `propose`, the runtime does not support campaigns. Say so and stop; do not
+emulate the loop with manual prompt edits.
+
+1. Compile the user's words, not your paraphrase:
+   `npx @evalgate/sdk auto contract --intent "<the user's sentence>"`.
+   Show the compiled summary and every clause marked **Not understood**.
+   Ask the user to rephrase or to accept those clauses; never accept them
+   yourself.
+2. Show `npx @evalgate/sdk auto review` to the user. Run
+   `auto review --approve` only after the user approves that exact plan, and
+   pass `--accept-risk <id>` only for items the user named. The approval
+   records who approved which plan hash.
+3. `npx @evalgate/sdk auto run` executes under the contract. A refused
+   candidate (it changed a spec, grader, dataset or baseline) is evidence,
+   not something to work around by editing those files.
+4. `npx @evalgate/sdk auto propose --push --open-pr` freezes the candidate,
+   writes the report and `campaign.json`, and opens a **draft** pull request.
+   Report the candidate as **not confirmed**.
+5. Independent confirmation runs in EvalGate after the user imports
+   `campaign.json` (`/change-assessments/import`). Discover the hosted
+   operation and scopes before calling it.
+
+Stop at the human steps and hand the user the link: approving a hosted
+contract, starting release review, adopting a candidate, and merging. EvalGate
+refuses those from API keys and MCP tokens, and never merges. A cost claim
+needs measured cost on both sides plus confirmation; otherwise report
+`not_measured` or selection evidence only.
+
+For scheduled campaigns, `npx @evalgate/sdk auto dispatch --open-pr` runs the
+approved plan unattended in an isolated worktree. Exit code 3 means it
+refused (missing or stale approval, dirty base, overlapping run, or the
+per-approval cap). Report the refusal code to the user; never re-approve the
+plan or edit the approval to make a schedule pass.
