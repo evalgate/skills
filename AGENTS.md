@@ -24,6 +24,8 @@ contracts; it does not contain the private EvalGate application.
   The documentation MCP remains anonymous and public-content-only.
 - Use `skills/use-evalgate-mcp/references/scoped-authoring.md` for supported
   write names, admin-only connector mutations and unshipped quality operations.
+- Product operations require an attributable organization-scoped credential;
+  a Skill installation or public schema discovery does not issue one.
 - Do not weaken a release gate, remove protected slices, relabel a regression,
   or fabricate an unmeasured metric to make a result pass.
 - Keep `classification`, `invokeEvalGate`, and `releaseDecision` consistent with
