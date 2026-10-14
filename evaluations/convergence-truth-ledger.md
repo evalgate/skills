@@ -4,9 +4,9 @@ This ledger records the runtime facts the Skills distribution is allowed to
 teach. It is intentionally short: the installed SDK's capability map, command
 help, and machine-readable reports outrank memory or examples in this repo.
 
-| Surface | Runtime truth (published SDK 3.12.5) | Skill behavior |
+| Surface | Verified published SDK 3.13.0 / source 3.13.1 boundary | Skill behavior |
 | --- | --- | --- |
-| Capability contract | `capabilities --format json` reports contract `2026-09-10`, 22 capabilities, 66 commands, and complete coverage. | Discover capabilities before selecting a command; record SDK and contract versions in evidence. Prefer `npx @evalgate/sdk` over bare `evalgate` or `npx evalgate`. |
+| Capability contract | Versioned runtime reports its exact `sdkVersion`, command registry and contract `2026-09-10` through `capabilities --format json`. The published npm/PyPI release is 3.13.0; platform source has moved to 3.13.1 and may lead published packages. | Discover the **installed** version and commands before selecting an operation. Prefer `npx @evalgate/sdk` over `npx evalgate`; the bare executable is safe only after installation provenance is verified. |
 | Local versus hosted | `gate` and `baseline update` are deterministic/offline by default; `--allow-network` explicitly opts into provider-backed evaluators. Hosted product, repository, trace, provider, and release operations require an attributable organization-scoped credential or a saved `login` session. | Keep local evidence and hosted evidence separate. Never imply a local pass proves hosted state. |
 | Authentication | The supported CLI surface is `login` (browser device flow), `whoami` (identity without printing secrets), `status --json` (readiness), `logout`, and `EVALGATE_API_KEY` for CI. The removed `auth` family returns `COMMAND_REMOVED`. The SDK library (`new AIEvalClient()`) still needs an explicit key; only the CLI reads a saved session. | Use the canonical authentication reference. Never print, commit, or request secrets in chat. Use an RFC 8628/device flow only when the published runtime advertises the exact endpoints. |
 | Link outcomes | `link` may return `code: human_action_required` (legacy `GITHUB_ACCESS_REQUIRED`) when the person must open an install URL, or `GITHUB_INSTALL_UNAVAILABLE` (503) when the operator has not configured the GitHub App. | Treat the first as a human install step; treat the second as an operator problem to report, not retry. |
@@ -17,13 +17,20 @@ help, and machine-readable reports outrank memory or examples in this repo.
 | Trajectory | Release-bearing agent cases can require complete golden observations, including tool path, order, arguments, and outcomes. | Missing or truncated observations fail closed as incomplete release evidence (`trajectory_evidence_missing` / `REGRESSION`). A safe final answer cannot erase an unsafe intermediate tool action. |
 | Traces | `reportTrace(client, trace, { tracePolicy: { mode } })` accepts `metadata_only`, `allowlist`, `redacted`, or `full_content_explicit_opt_in`. `/api/collector` wire fields are snake_case (`trace_id`, `span_id`, `duration_ms`); `/api/traces` accepts camelCase fields. `traceOpenAI` captures prompts/outputs unless `captureInput: false, captureOutput: false`. | Name traces without customer data; do not rely on redaction renaming. Prefer metadata-only until the operator opts in to content capture. |
 | Red team | Red-team workspace/campaign/finding/report operations are cloud capabilities; the CLI exposes workspace retrieval and API operation identifiers. | Route to the hosted capability only with scoped credentials. A framework/control mapping is provenance and design guidance, not proof of implementation, compliance, certification, endorsement, or partnership. Keep attack and benign utility evidence distinct. |
-| Python CLI lag | Published PyPI `evalgate-sdk` 3.6.0 lacks `capabilities`, `status`, `login`, `link`, and `repo` even when the capability map marks them `python: true`. | Until PyPI catches up, run CLI workflows with the Node `@evalgate/sdk` even in Python repositories. |
+| Python CLI release | PyPI now publishes `evalgate-sdk==3.13.0`, replacing the old 3.6.0 lag. It includes the published Python CLI; source 3.13.1 remains distinct. | Inspect `evalgate capabilities --format json` and `evalgate --help` after installing the official Python package. If a command is missing in the installed release, use the verified TypeScript CLI instead of assuming source parity. |
+| MCP writes | The first-party MCP release catalog declares four authenticated evaluation-authoring writes (`evaluations.create`, `test_cases.add`, `runs.start`, `traces.create`) plus admin-only connection mutations. Anonymous discovery exposes released read-only schemas; Portable Quality MCP remains unqualified. | Discover tools with an appropriately scoped caller, require explicit human approval for effects or spend, and verify readback. The Smithery listing was indexed as read-only and needs an authorized publisher refresh; metadata never grants credentials. |
 | Distribution metadata | This repository is an Agent Skills distribution, versioned independently from the SDK. The published package README may lag the runtime. | Pin the Skills distribution version in manifests and state SDK alignment separately; do not copy stale runtime prose. |
 
 ## Verification record
 
-- Source inspected: published `@evalgate/sdk@3.12.5` capability output and CLI
-  help, plus the platform's reviewed CLI/auth documentation.
+- Historical Skills baseline: published `@evalgate/sdk@3.12.5` as of the 2026-10-05 merge.
+  Reconciled public registries on October 14, 2026: npm `@evalgate/sdk@3.13.0`
+  and PyPI `evalgate-sdk==3.13.0`; platform source declares 3.13.1. An installed
+  package, rather than source metadata, remains the authority for its commands.
+- The platform's release-capability registry and public MCP server card declare
+  scoped authoring and connector writes, while the anonymous listing remains
+  read-only. Production Smithery OAuth/write compatibility still needs an
+  authenticated end-to-end test.
 - Authority order: current runtime capability/help and machine reports, then
   canonical EvalGate docs, then this ledger and other examples.
 - Unknown or unsupported flags, provider controls, exit values, auth grants,
@@ -57,6 +64,6 @@ not in versioned prose across individual skills.
 - PyPI publication and third-party discovery re-indexing remain release work;
   this repository does not publish SDK packages or control index refreshes.
 
-Import intake is conditional: npm SDK 3.12.5 does not advertise `import`,
-although development runtimes may. Discover it before invoking it; no
-source-tree feature is presumed published. `improve` is advertised by npm.
+Import intake is version-sensitive: verify `import`, `quality`, `serve` and
+other evolving commands against the installed CLI before invoking them. Do not
+infer a command is released because the main source tree advertises it.

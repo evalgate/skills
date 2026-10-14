@@ -162,11 +162,14 @@ over remembered commands. Hosted actions require an attributable,
 organization-scoped credential. Never request, print, or commit its value.
 
 An attachment visible in a host UI is not necessarily readable by a remote
-tool. Product MCP is read-only at the reviewed contract: do not use it to
-upload resources, start checks, record feedback, accept standards, or create a
-background grant. Discover later capabilities from current schemas; until such
-an operation is advertised, report it as unavailable and offer the local or
-explicitly invoked supported path.
+tool. Product MCP now has a narrow, **authenticated** write surface for creating
+evaluations, adding test cases, starting runs, and recording traces when role,
+scopes, user approval and the live tool schema permit. Route those requests to
+[use-evalgate-mcp](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md)
+and its scoped-authoring reference. Do not use product MCP for arbitrary resource
+uploads, portable check submission, feedback, standards adoption, or background
+grants: those are not released there. A write response is not gate evidence,
+model promotion, release approval, or authorization to merge.
 
 ## Evidence triage
 

@@ -1,6 +1,6 @@
 {
 	"name": "@evalgate/agent-skills-distribution",
-	"version": "1.2.1",
+	"version": "1.2.2",
 	"private": true,
 	"description": "Validation and behavioral evaluation contracts for the public EvalGate Agent Skills distribution.",
 	"type": "module",

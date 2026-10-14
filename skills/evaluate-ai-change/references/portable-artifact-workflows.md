@@ -38,9 +38,13 @@ this Skill was loaded.
   use only the operation it advertises. Keep upload, submission, polling,
   cancellation, and retrieval as distinct capabilities. An accepted receipt is
   not a completed check.
-- **Read-only MCP:** use it only for the product evidence it exposes. The
-  reviewed public product MCP does not authorize uploads, check submission,
-  feedback, standards adoption, or background grants.
+- **MCP permission boundary:** public documentation MCP remains read-only.
+  Authenticated product MCP has a scoped evaluation-authoring subset (create an
+  evaluation, add a case, start a run, record a trace) when the live schema,
+  role, scopes and explicit user approval permit it. Use the
+  [MCP Skill](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md).
+  Portable quality resource upload, check submission, feedback, standards
+  adoption and background grants remain unavailable via this product MCP.
 - **No executable path:** explain the exact missing capability or permission,
   name the evidence that remains absent, and classify the result without
   pretending execution occurred. Public documentation discovery is not product

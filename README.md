@@ -70,15 +70,16 @@ references using progressive disclosure.
 - `run-regression-gate` — run and interpret a gate without weakening policy.
 - `collect-agent-traces` — add bounded, redacted trace evidence.
 - `ask-repository-question` — inspect an authorized immutable repository snapshot.
-- `use-evalgate-mcp` — use public docs or scoped read-only product MCP tools.
+- `use-evalgate-mcp` — use public documentation, scoped product reads, and approved, permission-bound evaluation authoring tools.
 
 The primary skill uses progressive disclosure: its entry point contains the
 decision loop and routes detailed authoring, regression, experiment, cost,
 provenance, and troubleshooting guidance through focused references.
 Portable artifact checks additionally route to one bundled reference that
 separates host capability from user authority. A Skill install does not grant
-attachment access, add background hooks, or turn the read-only product MCP into
-a mutation surface.
+attachment access or background hooks. The product MCP can perform specific
+released, scope-filtered evaluation/connection mutations only with appropriate
+authorization and explicit user approval; a Skill install does not grant it.
 
 ## Core workflow
 
@@ -97,7 +98,10 @@ change
 Local planning and deterministic checks use the documented [EvalGate CLI](https://www.evalgate.com/docs/sdk/cli).
 Hosted product state, repository intelligence, and traces require an
 attributable organization-scoped API key. The public documentation MCP remains
-anonymous and read-only.
+anonymous and read-only. The product MCP can expose `evaluations.create`,
+`test_cases.add`, `runs.start`, and `traces.create` only to authorized
+callers. See [scoped MCP authoring](skills/use-evalgate-mcp/references/scoped-authoring.md)
+and [Smithery listing refresh](docs/SMITHERY_HANDOFF.md).
 
 ## Evaluate the skill
 
