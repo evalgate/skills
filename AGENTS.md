@@ -18,9 +18,14 @@ contracts; it does not contain the private EvalGate application.
 
 - Never add customer prompts, datasets, traces, credentials, private repository
   content, or proprietary EvalGate scoring logic to this public repository.
-- Treat MCP product results as read-only evidence. Product operations require
-  an attributable organization-scoped credential; the documentation MCP is
-  anonymous and public-content-only.
+- MCP product access is scope-filtered: read evidence without mutation; create
+  evaluations, test cases, runs or traces only when the current authenticated
+  caller has the required write scope/role and explicitly approves the effect.
+  The documentation MCP remains anonymous and public-content-only.
+- Use `skills/use-evalgate-mcp/references/scoped-authoring.md` for supported
+  write names, admin-only connector mutations and unshipped quality operations.
+- Product operations require an attributable organization-scoped credential;
+  a Skill installation or public schema discovery does not issue one.
 - Do not weaken a release gate, remove protected slices, relabel a regression,
   or fabricate an unmeasured metric to make a result pass.
 - Keep `classification`, `invokeEvalGate`, and `releaseDecision` consistent with

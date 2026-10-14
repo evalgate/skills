@@ -1,6 +1,6 @@
 {
 	"name": "evalgate",
-	"version": "1.2.1",
+	"version": "1.2.2",
 	"description": "Portable EvalGate workflows for behavioral-change analysis, evaluation evidence, regression gates, traces, and repository questions.",
 	"author": {
 		"name": "EvalGate",
@@ -20,8 +20,8 @@
 	"mcpServers": "./.mcp.json",
 	"interface": {
 		"displayName": "EvalGate",
-		"shortDescription": "Run evidence-backed AI evaluation workflows.",
-		"longDescription": "Use EvalGate to discover evaluation files, run local regression gates, collect bounded traces, and ask evidence-backed questions about a connected repository. Cloud workflows require an explicitly provisioned scoped API key.",
+		"shortDescription": "Review and author evidence-backed AI evaluations.",
+		"longDescription": "Use EvalGate to discover evaluation files, run local regression gates, collect bounded traces, and ask evidence-backed questions about a connected repository. Authenticated product MCP writes require an approved organization-scoped credential and the appropriate member/admin role.",
 		"developerName": "EvalGate",
 		"category": "Developer Tools",
 		"capabilities": [

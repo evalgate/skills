@@ -47,6 +47,7 @@ const notMeasuredEvidenceSummary = Object.fromEntries(
 
 run(["scripts/validate-distribution.mjs"], 0);
 run(["tests/distribution-regressions.mjs"], 0);
+run(["tests/mcp-authoring-contract.mjs"], 0);
 run(
 	[
 		"scripts/score-skill-evaluation.mjs",

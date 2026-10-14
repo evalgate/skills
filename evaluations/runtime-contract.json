@@ -1,7 +1,7 @@
 {
-	"sdkVersion": "3.12.5",
+	"sdkVersion": "3.13.0",
 	"contractVersion": "2026-09-10",
-	"capabilityCount": 22,
+	"capabilityCount": 23,
 	"commands": [
 		"analyze",
 		"api",
@@ -47,6 +47,7 @@
 		"print-config",
 		"promote",
 		"prompts",
+		"quality",
 		"quality-profile",
 		"red-team",
 		"replay",
@@ -56,6 +57,7 @@
 		"rollback",
 		"run",
 		"run-cli",
+		"serve",
 		"share",
 		"status",
 		"sync",
