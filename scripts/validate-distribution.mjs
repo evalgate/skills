@@ -395,7 +395,7 @@ const primarySkill = readFileSync(
 for (const requiredPortableText of [
 	"portable-artifact-workflows.md",
 	"non-repository artifact",
-	"Product MCP is read-only",
+	"Product MCP now has a narrow",
 	"permission are separate facts",
 ]) {
 	if (!primarySkill.includes(requiredPortableText)) {
