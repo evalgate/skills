@@ -23,7 +23,7 @@ The tool payloads are schema-dependent. Retrieve their **current** input schemas
 ### Reviewed workflow
 
 1. Read `project.inspect` or `evaluations.list` with read scopes. Choose the correct organization and verify the real task and expected result.
-2. Confirm the current principal's **write** scope, member role, target tenant and consent to the specific write, including possible metered run cost. Do not acquire or print credentials in chat.
+2. Confirm the current principal's **write** scope, member role, target tenant and explicit human approval for the specific write, including possible metered run cost. Do not acquire or print credentials in chat.
 3. Discover the exact tool and schema from the *authenticated* product MCP response; do not guess a method name from prose or use the anonymous list as proof of absence.
 4. For new coverage, ask approval before `evaluations.create` or `test_cases.add`; never invent a passing expected output. A tool result that records an evaluation ID is not evaluation success.
 5. Ask approval before `runs.start`. Follow the returned run identifier with `runs.list` or `run.explain`; report running, blocked, failed and incomplete outcomes truthfully.
