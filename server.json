@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.evalgate/evalgate",
+  "title": "EvalGate",
+  "description": "Create and run AI evaluations, record traces, and inspect results with scoped organization access.",
+  "version": "1.0.0",
+  "websiteUrl": "https://www.evalgate.com/docs/platform/mcp-integration",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://www.evalgate.com/api/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Authenticate with an EvalGate organization API key.",
+          "isRequired": true,
+          "isSecret": true,
+          "value": "Bearer {EVALGATE_API_KEY}",
+          "variables": {
+            "EVALGATE_API_KEY": {
+              "description": "Your EvalGate organization API key. Available operations depend on its scopes and your role.",
+              "format": "string",
+              "isRequired": true,
+              "isSecret": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
