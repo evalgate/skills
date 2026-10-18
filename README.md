@@ -101,7 +101,7 @@ attributable organization-scoped API key. The public documentation MCP remains
 anonymous and read-only. The product MCP can expose `evaluations.create`,
 `test_cases.add`, `runs.start`, and `traces.create` only to authorized
 callers. See [scoped MCP authoring](skills/use-evalgate-mcp/references/scoped-authoring.md)
-and [Smithery listing refresh](docs/SMITHERY_HANDOFF.md).
+and [MCP Registry publication](docs/MCP_REGISTRY.md).
 
 ## Evaluate the skill
 
