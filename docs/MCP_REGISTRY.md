@@ -1,62 +1,53 @@
-# Publish EvalGate MCP metadata
+# EvalGate MCP Registry metadata
 
-EvalGate's direct product MCP endpoint is `https://www.evalgate.com/api/mcp`.
-[`server.json`](../server.json) defines its official MCP Registry metadata under
-the name `io.github.evalgate/evalgate`.
+The primary full MCP identity is `com.evalgate/evalgate` at
+`https://www.evalgate.com/api/mcp`. Its public, read-only documentation companion
+is `com.evalgate/evalgate-docs` at `https://www.evalgate.com/api/mcp/docs`.
+Both use DNS-verified ownership of evalgate.com.
 
-This public Skills repository maintains discovery metadata and its publishing
-workflow. It does not contain or host the private EvalGate application. The
-manifest intentionally omits `repository`, which would identify the server's
-source code. Publishing this metadata does not deploy the product MCP or change
-its permissions.
+This Skills repository distributes connection metadata and agent instructions.
+It does not host the application or publish registry entries. The platform
+release pipeline owns publication and domain-verification credentials. The
+[`Validate MCP Registry metadata` workflow](../.github/workflows/publish-mcp-registry.yml)
+validates this repository's metadata without a publishing credential.
 
-## Versioning
+[`server.json`](../server.json) mirrors the canonical full MCP manifest. Keep
+its name, metadata version and connection settings aligned with the reviewed
+platform manifest. Metadata versions are independent of Skills and SDK versions.
+The full server supports OAuth discovery or scoped organization credentials;
+its registry metadata does not require a pasted bearer key. Never commit keys.
 
-`1.0.0` is the initial registry metadata version. It is independent of the Skills
-distribution, SDK, and MCP server runtime versions. Increment `server.json`'s
-version whenever its description, connection configuration, or other metadata
-changes. Published versions are immutable; reusing one fails rather than
-overwriting the existing entry.
+## Updating metadata
 
-## Publish and update
+1. Prepare the canonical manifest change in the platform release pipeline.
+2. Validate, publish and read back that version through the domain-verified
+   publisher. Identical published versions are verified without republishing;
+   changed metadata requires a new version.
+3. Mirror the accepted full-server metadata here and run `npm test`.
+4. Merge the reviewed Skills change. This workflow validates; it cannot publish
+   under the historical GitHub namespace or recreate its URL conflict.
 
-1. Edit `server.json`, keeping the description within 100 characters. The bearer
-   value is a template: users supply their own organization key when connecting.
-   Never replace `{EVALGATE_API_KEY}` with a credential.
-2. Run `npm test` and `mcp-publisher validate server.json` with the publisher
-   version pinned in the workflow. Review the complete metadata change.
-3. Merge the reviewed manifest into `main`. The
-   [`Publish MCP Registry` workflow](../.github/workflows/publish-mcp-registry.yml)
-   runs both validation gates before its isolated publishing job. GitHub OIDC
-   authorizes the `io.github.evalgate/*` namespace without a stored publishing
-   secret. No npm publication or EvalGate product credential is needed.
-4. For a manual attempt, run that workflow on `main`. Repeating a successfully
-   published version is expected to fail; verify the existing entry before
-   deciding whether new metadata needs a version bump.
+The former `io.github.evalgate/evalgate` listing must be retired as part of the
+namespace migration: the registry reserves each remote URL for one server name,
+including when the same operator owns both namespaces. Both GitHub repositories
+remain available. Existing clients keep their direct MCP URLs and credentials.
 
-Pull requests validate without publishing. Automatic publication is triggered
-by a `server.json` change on `main`; changing the workflow alone does not publish.
-Actions and the official publisher are pinned, and both jobs verify the
-publisher archive's SHA-256 before running it.
-
-## Verify the published entry
+## Verify the canonical entries
 
 ```bash
 curl --fail --silent --show-error \
-  'https://registry.modelcontextprotocol.io/v0.1/servers/io.github.evalgate%2Fevalgate/versions/latest'
+  'https://registry.modelcontextprotocol.io/v0.1/servers/com.evalgate%2Fevalgate/versions/latest'
+curl --fail --silent --show-error \
+  'https://registry.modelcontextprotocol.io/v0.1/servers/com.evalgate%2Fevalgate-docs/versions/latest'
 ```
 
-Confirm `server.name`, `server.version`, the direct remote URL, and the secret
-bearer input match the reviewed manifest. A registry entry confirms published
-connection metadata; it does not prove authenticated write execution. Product
-operations remain scope- and role-filtered. Follow
-[scoped MCP authoring](../skills/use-evalgate-mcp/references/scoped-authoring.md)
-for authorized product verification. The separate documentation MCP remains
-public and read-only at `https://www.evalgate.com/api/mcp/docs`.
+Confirm active status, names, versions and direct remote URLs. Registry metadata
+does not establish authenticated execution or a change in product availability.
+Product operations remain scope- and role-filtered; follow
+[scoped MCP authoring](../skills/use-evalgate-mcp/references/scoped-authoring.md).
 
 ## Registry references
 
-- [Remote servers](https://modelcontextprotocol.io/registry/remote-servers)
-- [GitHub Actions and OIDC](https://modelcontextprotocol.io/registry/github-actions)
-- [Immutable versions](https://modelcontextprotocol.io/registry/versioning)
+- [Remote servers and URL uniqueness](https://modelcontextprotocol.io/registry/remote-servers)
+- [Publisher status commands](https://github.com/modelcontextprotocol/registry/blob/main/docs/reference/cli/commands.md)
 - [Current manifest schema](https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json)
