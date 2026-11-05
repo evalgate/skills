@@ -176,6 +176,9 @@ those values.
 
 ## MCP servers
 
+- Primary registry identity: `com.evalgate/evalgate`; documentation companion:
+  `com.evalgate/evalgate-docs`. This repository distributes their connection
+  metadata; the domain-verified platform pipeline owns registry publication.
 - Product MCP: `https://www.evalgate.com/api/mcp` — public protocol/schema
   discovery; scoped credentials required for organization tools.
 - Documentation MCP: `https://www.evalgate.com/api/mcp/docs` — public,

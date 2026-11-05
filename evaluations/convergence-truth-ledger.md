@@ -4,9 +4,9 @@ This ledger records the runtime facts the Skills distribution is allowed to
 teach. It is intentionally short: the installed SDK's capability map, command
 help, and machine-readable reports outrank memory or examples in this repo.
 
-| Surface | Verified Node SDK 3.14.1 / historical Python and source boundaries | Skill behavior |
+| Surface | Verified Node SDK 3.17.0 / historical Python and source boundaries | Skill behavior |
 | --- | --- | --- |
-| Capability contract | Versioned runtime reports its exact `sdkVersion`, command registry and contract `2026-09-10` through `capabilities --format json`. The installed npm release was reverified as 3.14.1 on October 18, 2026. The October 14 npm/PyPI 3.13.0 and platform source 3.13.1 observations remain in the verification record below. | Discover the **installed** version and commands before selecting an operation. Prefer `npx @evalgate/sdk` over `npx evalgate`; the bare executable is safe only after installation provenance is verified. |
+| Capability contract | Versioned runtime reports its exact `sdkVersion`, command registry and contract `2026-09-10` through `capabilities --format json`. The installed npm release was reverified as 3.17.0 on November 5, 2026. Earlier Node, Python and platform-source observations remain in the verification record below. | Discover the **installed** version and commands before selecting an operation. Prefer `npx @evalgate/sdk` over `npx evalgate`; the bare executable is safe only after installation provenance is verified. |
 | Local versus hosted | `gate` and `baseline update` are deterministic/offline by default; `--allow-network` explicitly opts into provider-backed evaluators. Hosted product, repository, trace, provider, and release operations require an attributable organization-scoped credential or a saved `login` session. | Keep local evidence and hosted evidence separate. Never imply a local pass proves hosted state. |
 | Authentication | The supported CLI surface is `login` (browser device flow), `whoami` (identity without printing secrets), `status --json` (readiness), `logout`, and `EVALGATE_API_KEY` for CI. The removed `auth` family returns `COMMAND_REMOVED`. The SDK library (`new AIEvalClient()`) still needs an explicit key; only the CLI reads a saved session. | Use the canonical authentication reference. Never print, commit, or request secrets in chat. Use an RFC 8628/device flow only when the published runtime advertises the exact endpoints. |
 | Link outcomes | `link` may return `code: human_action_required` (legacy `GITHUB_ACCESS_REQUIRED`) when the person must open an install URL, or `GITHUB_INSTALL_UNAVAILABLE` (503) when the operator has not configured the GitHub App. | Treat the first as a human install step; treat the second as an operator problem to report, not retry. |
@@ -23,6 +23,12 @@ help, and machine-readable reports outrank memory or examples in this repo.
 
 ## Verification record
 
+- Current Node SDK check, November 5, 2026: `node scripts/check-commands.mjs`
+  resolved the published npm latest release `@evalgate/sdk@3.17.0`, contract
+  `2026-09-10`, 23 capabilities and 68 commands. It checked all 23 Skill/reference
+  files against that installed runtime. Only `sdkVersion` changed in the recorded
+  command inventory. Earlier verification records retain their original scope;
+  this check does not reverify Python, hosted execution or platform deployments.
 - Current Node SDK check, October 18, 2026: the public npm `latest` tag resolved
   to `@evalgate/sdk@3.14.1`. A temporary-directory invocation of that exact
   published release reported SDK 3.14.1, contract `2026-09-10`, 23 capabilities,
