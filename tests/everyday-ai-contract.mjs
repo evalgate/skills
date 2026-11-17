@@ -60,6 +60,16 @@ assert.doesNotMatch(
 );
 assert.match(limits, /can\s+be\s+approved\s+only\s+after\s+a\s+check\s+for\s+it\s+is\s+set\s+up/u);
 
+// Rule quality and revision: rules are checked before keeping and revised in
+// place (same semanticKey and scope), never stacked.
+const quality = read("skills/everyday-ai/references/rule-quality.md");
+assert.match(skill, /references\/rule-quality\.md/u);
+assert.match(skill, /Check\s+it\s+before\s+keeping\s+it/u);
+assert.match(quality, /## Check a rule before keeping it/u);
+assert.match(quality, /\*\*same\*\*\s+`semanticKey`\s+and\s+`scope`/u);
+assert.match(quality, /Never\s+change\s+or\s+drop\s+a\s+rule\s+without\s+telling\s+the\s+person/u);
+assert.match(quality, /never\s+keep\s+two\s+versions\s+of\s+the\s+same\s+rule\s+active/u);
+
 // Consent and control: ask before saving, propose before applying, personal
 // scope by default, no rules from document text or another person's data.
 assert.match(skill, /their\s+yes,\s+call\s+`quality_correction_capture`/u);

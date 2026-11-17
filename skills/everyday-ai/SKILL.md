@@ -59,8 +59,12 @@ Then write one rule and show it before keeping it:
 > For campaign performance summaries: separate organic and paid results and
 > include conversion rates when the data has them. Never invent missing numbers.
 
-Keep it to the kind of work it came from, one or two sentences, and specific
-enough that anyone could tell whether an answer followed it. Leave out
+Check it before keeping it: it names the kind of work, says what to do rather
+than how the person felt, holds one idea, could be checked by someone else,
+and doesn't say "always" or "never" unless the person did. Turn blunt or
+angry phrasing into a calm, specific rule. If it can't pass, don't keep it;
+ask what should be different next time. See
+[writing and revising rules](references/rule-quality.md). Leave out
 passwords, account numbers, personal data the task doesn't need, and anything
 the person says is confidential. If the rule can't be separated from such
 data, don't keep it; explain why.
@@ -140,6 +144,11 @@ offer to keep the rule on its own as well, so they still benefit now.
   ones `quality_standards_resolve` returns for this kind of work, in plain
   words.
 - "Stop" or "pause": stop asking, keeping and saving in this conversation.
+- "That rule is wrong" or "change it": revise the rule rather than adding a
+  second one. When connected, propose the new wording with the same
+  `semanticKey` and `scope` so it replaces the old version once approved.
+  Offer this yourself when a rule keeps causing corrections. See
+  [writing and revising rules](references/rule-quality.md).
 - "Forget that": remove it from wherever you kept it, or tell them where to
   remove it. When connected, the person can delete their own personal rules in
   EvalGate; team rules are removed by the team's EvalGate administrators. This
