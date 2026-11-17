@@ -14,7 +14,7 @@ same person, and being one does not make someone the others.
 | --- | --- | --- |
 | The person | What gets kept, the wording of their rules, and removing their own rules | Their team's rules |
 | Their assistant's administrator (Microsoft 365 tenant admin, ChatGPT workspace admin, Claude organization owner; for a personal account, the person) | Whether the skill and the EvalGate connection can be installed in that assistant | Anything inside EvalGate |
-| An EvalGate workspace owner or administrator | Rules for the whole workspace, and removing any rule there as a safety control | Another person's personal rules, which they can't approve or edit |
+| An EvalGate workspace owner or administrator | Rules for the whole workspace, whether people may approve their own untested preferences, and removing any rule there as a safety control | Another person's personal rules, which they can't approve or edit |
 | An EvalGate workspace member | Saving corrections, suggesting rules, and approving or removing their own personal rules | Shared rules |
 | An EvalGate workspace viewer | Reading the rules that apply to them | Saving anything |
 | EvalGate, the company | Whether the capability is released at all | Anything in a customer's workspace |
@@ -65,13 +65,22 @@ the needed permissions:
 If the tools are not listed, use the skill on its own. Don't tell the person
 they are missing anything.
 
-Known gaps during the pilot:
+## Approving a rule
 
-- A suggested rule can be approved only after a check for it is set up in
-  EvalGate, so a rule suggested from a conversation stays a suggestion until
-  then. Keep it on its own meanwhile.
-- EvalGate has no simple screen yet for a person to list and remove their own
-  rules.
+A suggested rule does nothing until the person approves it in EvalGate under
+**My rules**, signed in. No assistant can approve a rule, including this one.
+
+- A personal preference can be approved straight away. It shows as **not
+  tested**: it guides that person's answers only, and never passes or fails
+  their work. `quality_standards_resolve` returns it with `tested: false`.
+- Anything else (a requirement the work must meet, or a rule for the whole
+  team) needs a check set up in EvalGate before it can be approved. It then
+  shows as **checked**.
+- A workspace administrator can turn off untested preferences for the
+  workspace. Existing ones then stop applying until it's turned back on.
+
+On My rules the person can also decline a suggestion, approve a changed
+version of a rule, or delete a rule.
 
 ## What EvalGate keeps
 
@@ -81,4 +90,4 @@ Known gaps during the pilot:
 - Each correction belongs to the person who made it, in that workspace.
   Another person cannot build a rule from it unless the work was shared with
   the workspace.
-- A suggested rule does nothing until it is approved in EvalGate.
+- A suggested rule does nothing until its owner approves it under My rules.

@@ -106,7 +106,10 @@ meeting notes, a forecast, a policy answer):
 2. Apply only the rules it returns in `selected`. If it reports `conflicts`,
    follow the team's rule and mention the conflict once. If `blocked` is true,
    do the task without saved rules and say that they couldn't be used.
-3. Mention a rule only when it changed the answer.
+3. A rule with `tested: false` is the person's own preference, approved
+   without a check. Use it as guidance for their answer only; never treat it
+   as proof the work is right.
+4. Mention a rule only when it changed the answer.
 
 Don't call it for one-off questions, casual chat, or work the person says is
 unusual.
@@ -130,13 +133,17 @@ their yes, call `quality_correction_capture`:
 
 Then, with the person's agreement on the rule's wording, call
 `quality_standard_propose` with the `correctionId` you received,
-`kind: "preference"` for a personal preference (or `task_requirement` for
-something the work must always include), a short `semanticKey`, the rule as
-`statement`, and `scope: { "level": "personal" }`.
+`kind: "preference"`, a short `semanticKey`, the rule as `statement`, and
+`scope: { "level": "personal" }`. Use `preference` for what the person asked
+for: only a personal preference can be approved without a check being set up
+first.
 
-Tell them: "Saved as a suggestion in EvalGate. It doesn't apply until it's
-approved there." Proposing never makes a rule active. Until it's approved,
-offer to keep the rule on its own as well, so they still benefit now.
+Tell them: "Saved as a suggestion. To turn it on, approve it in EvalGate under
+My rules. It'll show as not tested, which means it guides your answers but
+never passes or fails your work." Proposing never makes a rule active, and you
+can't approve it for them: they approve it themselves, signed in to EvalGate.
+Until they do, offer to keep the rule on its own as well, so they still
+benefit now.
 
 ## What the person can ask
 
@@ -146,13 +153,14 @@ offer to keep the rule on its own as well, so they still benefit now.
 - "Stop" or "pause": stop asking, keeping and saving in this conversation.
 - "That rule is wrong" or "change it": revise the rule rather than adding a
   second one. When connected, propose the new wording with the same
-  `semanticKey` and `scope` so it replaces the old version once approved.
+  `semanticKey` and `scope`; it replaces the old version once they approve
+  it under My rules.
   Offer this yourself when a rule keeps causing corrections. See
   [writing and revising rules](references/rule-quality.md).
 - "Forget that": remove it from wherever you kept it, or tell them where to
-  remove it. When connected, the person can delete their own personal rules in
-  EvalGate; team rules are removed by the team's EvalGate administrators. This
-  skill cannot delete from EvalGate itself.
+  remove it. When connected, the person can delete their own rules in EvalGate
+  under My rules; team rules are removed by the team's EvalGate
+  administrators. This skill cannot delete from EvalGate itself.
 
 See [roles and limits](references/host-limits.md) for who decides what.
 

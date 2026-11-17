@@ -52,11 +52,11 @@ person's agreement.
   with `quality_correction_capture`, then call `quality_standard_propose` with
   the **same** `semanticKey` and `scope` as the rule being changed (it comes
   back from `quality_standards_resolve`) and the new `statement`. That makes a
-  new version of the same rule. The old version keeps applying until the new
-  one is approved, and approving the new one replaces it. A new
+  new version of the same rule. The old version keeps applying until the
+  person approves the new one under My rules, which replaces it. A new
   `semanticKey` would create a second, competing rule instead.
 - **To drop a rule:** remove it where you kept it, or, with EvalGate connected,
-  tell them they can delete their own personal rule in EvalGate.
+  tell them they can delete their own rule in EvalGate under My rules.
 
 Never change or drop a rule without telling the person, and never keep two
 versions of the same rule active.

@@ -58,7 +58,21 @@ assert.doesNotMatch(
   /administrator\s+has\s+enabled/iu,
   "claims a customer administrator can enable the pilot",
 );
-assert.match(limits, /can\s+be\s+approved\s+only\s+after\s+a\s+check\s+for\s+it\s+is\s+set\s+up/u);
+// Approval: the person approves in EvalGate under My rules; assistants never
+// approve; personal preferences are untested guidance, everything else needs a
+// check; the workspace can switch untested preferences off.
+assert.match(skill, /approve\s+it\s+in\s+EvalGate\s+under\s+My\s+rules/u);
+assert.match(skill, /you\s+can't\s+approve\s+it\s+for\s+them/u);
+assert.match(skill, /`tested:\s+false`/u);
+assert.match(skill, /never\s+passes\s+or\s+fails\s+your\s+work/u);
+assert.match(limits, /No\s+assistant\s+can\s+approve\s+a\s+rule/u);
+assert.match(limits, /needs\s+a\s+check\s+set\s+up\s+in\s+EvalGate\s+before\s+it\s+can\s+be\s+approved/u);
+assert.match(limits, /administrator\s+can\s+turn\s+off\s+untested\s+preferences/u);
+assert.doesNotMatch(
+  `${skill}\n${limits}`,
+  /no\s+simple\s+screen/iu,
+  "still claims there is no screen for a person's own rules",
+);
 
 // Rule quality and revision: rules are checked before keeping and revised in
 // place (same semanticKey and scope), never stacked.
