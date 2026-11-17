@@ -1,9 +1,9 @@
 ---
-name: improve-everyday-ai-work
+name: everyday-ai
 description: Help a person's everyday AI assistant (Microsoft 365 Copilot Chat, ChatGPT, Claude) stop repeating mistakes in their reports, summaries, emails and briefs. Use when EvalGate is connected and the person starts a recurring kind of work, corrects an answer and wants it remembered, or asks what has been learned. Not for code, CI or engineering evaluation.
 ---
 
-# Improve everyday AI work
+# Everyday AI
 
 ## What this does for the person
 

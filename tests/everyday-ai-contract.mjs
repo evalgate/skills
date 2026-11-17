@@ -7,8 +7,8 @@ import { resolve } from "node:path";
 // and it must keep the person in control of what is saved and applied.
 const root = resolve(import.meta.dirname, "..");
 const read = (p) => readFileSync(resolve(root, p), "utf8");
-const skill = read("skills/improve-everyday-ai-work/SKILL.md");
-const limits = read("skills/improve-everyday-ai-work/references/host-limits.md");
+const skill = read("skills/everyday-ai/SKILL.md");
+const limits = read("skills/everyday-ai/references/host-limits.md");
 const readme = read("README.md");
 
 // Only the three real tools, by their real names.
@@ -53,5 +53,5 @@ assert.match(skill, /stores\s+only\s+a\s+fingerprint/u);
 // Plain language toward the person.
 assert.match(skill, /Do\s+not\s+use\s+words\s+like\s+trace,\s+CI,\s+gate,\s+rubric/u);
 
-assert.ok(readme.includes("`improve-everyday-ai-work`"), "README omits the skill");
+assert.ok(readme.includes("`everyday-ai`"), "README omits the skill");
 console.log("PASS: everyday-AI skill names only real tools, stays honest about hosts and release, and keeps consent");
