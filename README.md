@@ -71,6 +71,12 @@ references using progressive disclosure.
 - `collect-agent-traces` — add bounded, redacted trace evidence.
 - `ask-repository-question` — inspect an authorized immutable repository snapshot.
 - `use-evalgate-mcp` — use public documentation, scoped product reads, and approved, permission-bound evaluation authoring tools.
+- `everyday-ai` — for nontechnical work in Microsoft 365 Copilot Chat, ChatGPT
+  or Claude: turn a correction the person wants remembered into one short rule
+  and reuse it for that kind of work. Works with no setup, keeping rules in the
+  assistant or with the person. If the assistant is already connected to
+  EvalGate (pilot, not yet released), it saves the correction and suggests a
+  personal rule there instead. It never asks anyone to sign up.
 
 The primary skill uses progressive disclosure: its entry point contains the
 decision loop and routes detailed authoring, regression, experiment, cost,

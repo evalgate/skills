@@ -21,6 +21,7 @@ const expectedSkills = [
 	"ask-repository-question",
 	"collect-agent-traces",
 	"evaluate-ai-change",
+	"everyday-ai",
 	"run-regression-gate",
 	"setup-evalgate-project",
 	"use-evalgate-mcp",

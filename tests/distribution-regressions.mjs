@@ -13,7 +13,7 @@ try {
   assert.equal(exportWebsite(dir, { check: true }), count);
   const prefix = ".well-known/agent-skills/";
   const index = JSON.parse(readFileSync(resolve(dir, prefix, "index.json")));
-  assert.equal(index.skills.length, 6);
+  assert.equal(index.skills.length, 7);
   for (const skill of index.skills) {
     const bytes = readFileSync(resolve(dir, skill.url.slice(1)));
     assert.equal(skill.digest, `sha256:${createHash("sha256").update(bytes).digest("hex")}`);
