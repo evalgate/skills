@@ -54,4 +54,4 @@ for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
   } finally { rmSync(temp, { recursive: true, force: true }); }
 }
 if (failures.length) { console.error(failures.join("\n")); process.exitCode = 1; }
-else console.log("PASS: all six skills resolve references when installed independently");
+else console.log("PASS: all seven skills resolve references when installed independently");
