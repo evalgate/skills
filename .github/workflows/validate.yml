@@ -6,7 +6,8 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: "0 13 * * *"
+    # Weekly: live runs cost provider tokens. Use workflow_dispatch for a run now.
+    - cron: "17 13 * * 1"
 
 permissions:
   contents: read
@@ -27,7 +28,7 @@ jobs:
       - run: node scripts/check-commands.mjs
       - name: Score the mock live run with EvalGate's own skill tester
         run: |
-          npm install --no-save --no-package-lock @evalgate/sdk@latest
+          npm install --no-save --no-package-lock --ignore-scripts @evalgate/sdk@3.18.2
           EVALGATE_SDK_CLI=node_modules/@evalgate/sdk/dist/cli/index.js node tests/live-harness-contract.mjs
       - run: npx --yes skills@1.5.18 add . --list
       - name: Everyday persona is discoverable on its own
@@ -41,48 +42,79 @@ jobs:
       matrix:
         # Override with a repository variable, for example
         # SKILL_EVAL_MODELS='["anthropic:claude-sonnet-5-5","openai:gpt-4.1-mini"]'.
-        # Test the models people actually run these skills with.
+        # Test the models people actually run these skills with. Each id must be
+        # one the provider serves to this repository's key; a wrong id fails the
+        # leg as unhealthy (no completed provider call) instead of passing empty.
         target: ${{ fromJSON(vars.SKILL_EVAL_MODELS || '["anthropic:claude-sonnet-5-5","openai:gpt-4.1-mini"]') }}
+    env:
+      # Shell-quoted through env, never interpolated into run: scripts.
+      SKILL_EVAL_MIN_PASS_RATE: ${{ vars.SKILL_EVAL_MIN_PASS_RATE || '0' }}
+      SKILL_EVAL_MIN_TRIGGER_F1: ${{ vars.SKILL_EVAL_MIN_TRIGGER_F1 }}
+      SKILL_EVAL_MIN_UPLIFT: ${{ vars.SKILL_EVAL_MIN_UPLIFT }}
+      SKILL_EVAL_MAX_ADAPTER_ERROR_SHARE: ${{ vars.SKILL_EVAL_MAX_ADAPTER_ERROR_SHARE || '0.2' }}
+      SKILL_EVAL_MAX_RUN_FAILURE_SHARE: ${{ vars.SKILL_EVAL_MAX_RUN_FAILURE_SHARE || '0.2' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install the pinned EvalGate SDK
+        run: npm install --no-save --no-package-lock --ignore-scripts @evalgate/sdk@3.18.2
       - name: Resolve provider and model
         id: target
         run: |
-          echo "provider=${TARGET%%:*}" >> "$GITHUB_OUTPUT"
+          provider="${TARGET%%:*}"
+          case "$provider" in
+            anthropic|openai) ;;
+            *) echo "::error::unsupported provider in SKILL_EVAL_MODELS: $provider"; exit 1 ;;
+          esac
+          echo "provider=$provider" >> "$GITHUB_OUTPUT"
           echo "model=${TARGET#*:}" >> "$GITHUB_OUTPUT"
           echo "slug=$(echo "$TARGET" | tr ':/' '--')" >> "$GITHUB_OUTPUT"
         env:
           TARGET: ${{ matrix.target }}
       - name: Ablation of evaluate-ai-change (with and without, 3 trials)
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PROVIDER: ${{ steps.target.outputs.provider }}
+          MODEL: ${{ steps.target.outputs.model }}
+          # Each leg gets only its own provider's key.
+          OPENAI_API_KEY: ${{ steps.target.outputs.provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
+          ANTHROPIC_API_KEY: ${{ steps.target.outputs.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
         run: |
+          status=0
           node scripts/evaluate-ai-change-harness.mjs \
             --mode live \
-            --provider "${{ steps.target.outputs.provider }}" \
-            --model "${{ steps.target.outputs.model }}" \
+            --provider "$PROVIDER" \
+            --model "$MODEL" \
             --arm both --trials 3 \
-            --min-pass-rate "${{ vars.SKILL_EVAL_MIN_PASS_RATE || '0' }}" \
-            > ablation-report.json
-          node -e 'const r=require("./ablation-report.json"); console.log(JSON.stringify({with:r.arms.with, without:r.arms.without, ablation:{...r.ablation, byScenario:undefined}}, null, 2))'
+            --min-pass-rate "$SKILL_EVAL_MIN_PASS_RATE" \
+            > ablation-report.json || status=$?
+          node -e 'const r=require("./ablation-report.json"); console.log(JSON.stringify({status:r.status, health:r.health, with:r.arms?.with, without:r.arms?.without, ablation:r.ablation && {...r.ablation, byScenario:undefined}}, null, 2))' || true
+          exit "$status"
+      # Runs even when the ablation failed, so one leg still reports both; the
+      # job still fails because the ablation step did.
       - name: Behavior tests for every skill (with and without, 3 trials)
+        if: ${{ !cancelled() && steps.target.outcome == 'success' }}
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PROVIDER: ${{ steps.target.outputs.provider }}
+          MODEL: ${{ steps.target.outputs.model }}
+          OPENAI_API_KEY: ${{ steps.target.outputs.provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
+          ANTHROPIC_API_KEY: ${{ steps.target.outputs.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
+          EVALGATE_SDK_CLI: node_modules/@evalgate/sdk/dist/cli/index.js
         run: |
+          gates=()
+          if [ -n "$SKILL_EVAL_MIN_TRIGGER_F1" ]; then gates+=(--min-trigger-f1 "$SKILL_EVAL_MIN_TRIGGER_F1"); fi
+          if [ -n "$SKILL_EVAL_MIN_UPLIFT" ]; then gates+=(--min-uplift "$SKILL_EVAL_MIN_UPLIFT"); fi
+          status=0
           node scripts/skill-tests.mjs \
             --mode live \
-            --provider "${{ steps.target.outputs.provider }}" \
-            --model "${{ steps.target.outputs.model }}" \
+            --provider "$PROVIDER" \
+            --model "$MODEL" \
             --trials 3 \
-            ${{ vars.SKILL_EVAL_MIN_TRIGGER_F1 && format('--min-trigger-f1 {0}', vars.SKILL_EVAL_MIN_TRIGGER_F1) || '' }} \
-            ${{ vars.SKILL_EVAL_MIN_UPLIFT && format('--min-uplift {0}', vars.SKILL_EVAL_MIN_UPLIFT) || '' }} \
-            > skill-tests-report.json
-          node -e 'for (const r of require("./skill-tests-report.json").reports) console.log(r.skill, "F1", r.sdk?.trigger?.f1, "uplift", r.sdk?.task?.difference, "interval", JSON.stringify(r.sdk?.task?.interval && [r.sdk.task.interval.lower, r.sdk.task.interval.upper]), "trajectory", JSON.stringify(r.trajectory.variants), "tokens", JSON.stringify(r.meanTokensPerCase))'
+            "${gates[@]}" \
+            > skill-tests-report.json || status=$?
+          node -e 'for (const r of require("./skill-tests-report.json").reports) console.log(r.skill, "health", JSON.stringify(r.health), "F1", r.sdk?.trigger?.f1, "uplift", r.sdk?.task?.difference, "interval", JSON.stringify(r.sdk?.task?.interval && [r.sdk.task.interval.lower, r.sdk.task.interval.upper]), "trajectory", JSON.stringify(r.trajectory.variants), "tokens", JSON.stringify(r.meanTokensPerCase))' || true
+          exit "$status"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

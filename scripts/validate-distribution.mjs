@@ -7,6 +7,7 @@ import {
 	statSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { PINNED_SDK } from "./lib/sdk-pin.mjs";
 import {
 	classifications,
 	evidenceDimensions,
@@ -48,15 +49,44 @@ if (/github\.com\/evalgate\/ai-evaluation-platform/iu.test(agentInstructions)) {
 	failures.push("AGENTS.md exposes the private application repository");
 }
 
+// Parse every URL in the README. Required links are matched on the parsed
+// scheme, host and path, so "https://evalgate.com.attacker.example" or a URL
+// buried in another URL's query does not count.
+const readmeUrls = (readme.match(/https?:\/\/[^\s)<>"'`\]]+/gu) ?? []).flatMap(
+	(candidate) => {
+		try {
+			return [new URL(candidate)];
+		} catch {
+			return [];
+		}
+	},
+);
+const trimPath = (pathname) => pathname.replace(/\/+$/u, "") || "/";
+for (const required of [
+	{ hostnames: ["github.com"], pathname: "/evalgate/skills" },
+	{ hostnames: ["evalgate.com", "www.evalgate.com"], pathname: "/" },
+	{ hostnames: ["www.evalgate.com", "evalgate.com"], pathname: "/docs/sdk/cli" },
+]) {
+	const found = readmeUrls.some(
+		(url) =>
+			url.protocol === "https:" &&
+			required.hostnames.includes(url.hostname) &&
+			trimPath(url.pathname) === required.pathname,
+	);
+	if (!found) failures.push(`README.md omits a link to https://${required.hostnames[0]}${required.pathname}`);
+}
+
+// CI scores with exactly the pinned SDK, never whatever npm calls latest.
+const workflow = readFileSync(resolve(root, ".github/workflows/validate.yml"), "utf8");
+if (/@evalgate\/sdk@latest/u.test(workflow)) failures.push("validate.yml installs @evalgate/sdk@latest; use the pinned SDK");
+if (!workflow.includes(PINNED_SDK)) failures.push(`validate.yml does not install the pinned ${PINNED_SDK}`);
+
 for (const requiredReadmeText of [
-	"https://github.com/evalgate/skills",
 	"npx skills add evalgate/skills",
 	"--list",
 	"skills/evaluate-ai-change/SKILL.md",
 	"evaluations/runtime-contract.json",
 	"There is no npm package named `@evalgate/skills`",
-	"https://evalgate.com",
-	"https://www.evalgate.com/docs/sdk/cli",
 ]) {
 	if (!readme.includes(requiredReadmeText)) {
 		failures.push(`README.md omits ${requiredReadmeText}`);
@@ -83,17 +113,8 @@ if (JSON.stringify(everydaySkills) !== JSON.stringify(["everyday-ai"])) {
 if (existsSync(resolve(skillsRoot, "everyday-ai"))) {
 	failures.push("everyday-ai must not be installed by the default skills/ collection");
 }
-// Parse every URL in the README and require one that is exactly the everyday
-// install path on github.com, not a string that merely contains it.
-const readmeUrls = (readme.match(/https?:\/\/[^\s)<>"'`]+/gu) ?? []).flatMap(
-	(candidate) => {
-		try {
-			return [new URL(candidate)];
-		} catch {
-			return [];
-		}
-	},
-);
+// The everyday install path must be a parsed github.com URL, not a string
+// that merely contains it.
 const hasEverydayInstallPath = readmeUrls.some(
 	(url) =>
 		url.protocol === "https:" &&

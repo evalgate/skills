@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// Fails CI when a skill names an EvalGate CLI command the latest SDK doesn't ship,
-// or when the truth ledger records an SDK version older than npm latest.
+// Fails CI when a skill names an EvalGate CLI command the pinned SDK doesn't ship,
+// or when the truth ledger records a different SDK version than the pin.
+// Override the package with EVALGATE_SDK (for example to try a new release
+// before bumping scripts/lib/sdk-pin.mjs).
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { PINNED_SDK } from "./lib/sdk-pin.mjs";
 
 const root = resolve(import.meta.dirname, "..");
-const sdk = process.env.EVALGATE_SDK ?? "@evalgate/sdk@latest";
+const sdk = process.env.EVALGATE_SDK ?? PINNED_SDK;
 const npxExecutable = process.platform === "win32" ? "npx.cmd" : "npx";
 // Resolve the package once. Re-running npx for every help query repeatedly
 // performs registry/install work and can mix versions during a release.
@@ -122,7 +125,7 @@ if (!existsSync(ledgerPath)) {
 		);
 	} else if (ledgerVersion !== caps.sdkVersion) {
 		problems.push(
-			`truth ledger SDK ${ledgerVersion} lags npm latest ${caps.sdkVersion}`,
+			`truth ledger SDK ${ledgerVersion} differs from the checked SDK ${caps.sdkVersion}`,
 		);
 	}
 	if (!ledger.includes(caps.contractVersion)) {

@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { resolve } from "node:path";
 import { createChatProvider, discoverSkillDirectories, readFrontmatter } from "./lib/agent-loop.mjs";
 import { actionVocabulary, runSkillCase } from "./lib/skill-case-runner.mjs";
+import { PINNED_SDK } from "./lib/sdk-pin.mjs";
 import { scoreObservation, scoreTrajectories, TRAJECTORY_FIELDS } from "./score-skill-trajectory.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -23,6 +24,17 @@ const SDK_CASE_FIELDS = ["id", "prompt", "expectTrigger", "task"];
 const CASE_FIELDS = new Set([...SDK_CASE_FIELDS, "source", "trajectory"]);
 const SOURCES = new Set(["authored", "real", "golden"]);
 export const MINIMUM_CASES = 10;
+export { PINNED_SDK };
+
+/**
+ * Environment for the SDK child process: the provider keys the agent loop
+ * needs are removed, so the scorer never sees them.
+ */
+export function sdkEnvironment(env = process.env) {
+	return Object.fromEntries(
+		Object.entries(env).filter(([key]) => !/(^|_)(API_KEY|TOKEN|SECRET|PASSWORD)$|^(OPENAI|ANTHROPIC|OPENROUTER|GEMINI|GOOGLE|MISTRAL|GROQ|COHERE|AZURE_OPENAI)_/u.test(key)),
+	);
+}
 
 export function skillDirectories() {
 	return Object.fromEntries(
@@ -126,7 +138,7 @@ function selfTest(skillName, cases) {
 }
 
 function parseArgs(argv) {
-	const args = { mode: "fixture", skill: "all", trials: 3, provider: undefined, model: undefined, temperature: undefined, out: resolve(root, ".evalgate/skill-tests"), minTriggerF1: undefined, minUplift: undefined, minTrajectoryPassRate: undefined, allowSkip: false };
+	const args = { mode: "fixture", skill: "all", trials: 3, provider: undefined, model: undefined, temperature: undefined, out: resolve(root, ".evalgate/skill-tests"), minTriggerF1: undefined, minUplift: undefined, minTrajectoryPassRate: undefined, maxAdapterErrorShare: envShare("SKILL_EVAL_MAX_ADAPTER_ERROR_SHARE", 0.2), maxRunFailureShare: envShare("SKILL_EVAL_MAX_RUN_FAILURE_SHARE", 0.2), allowSkip: false };
 	for (let index = 0; index < argv.length; index++) {
 		const flag = argv[index];
 		const value = argv[index + 1];
@@ -145,13 +157,26 @@ function parseArgs(argv) {
 		else if (flag === "--min-trigger-f1") args.minTriggerF1 = take();
 		else if (flag === "--min-uplift") args.minUplift = take();
 		else if (flag === "--min-trajectory-pass-rate") args.minTrajectoryPassRate = Number(take());
+		else if (flag === "--max-adapter-error-share") args.maxAdapterErrorShare = Number(take());
+		else if (flag === "--max-run-failure-share") args.maxRunFailureShare = Number(take());
 		else if (flag === "--allow-skip") args.allowSkip = true;
 		else if (flag === "--help" || flag === "-h") args.help = true;
 		else throw new Error(`Unknown argument: ${flag}`);
 	}
 	if (!["fixture", "live"].includes(args.mode)) throw new Error("--mode must be fixture or live");
 	if (!Number.isInteger(args.trials) || args.trials < 1 || args.trials > 20) throw new Error("--trials must be 1 to 20");
+	for (const key of ["maxAdapterErrorShare", "maxRunFailureShare"]) {
+		if (!(args[key] >= 0 && args[key] <= 1)) throw new Error(`${key} must be between 0 and 1`);
+	}
 	return args;
+}
+
+function envShare(name, fallback) {
+	const value = process.env[name];
+	if (value === undefined || value === "") return fallback;
+	const parsed = Number(value);
+	if (!(parsed >= 0 && parsed <= 1)) throw new Error(`${name} must be between 0 and 1`);
+	return parsed;
 }
 
 const HELP = `EvalGate skill behavior tests
@@ -161,22 +186,34 @@ Usage:
   node scripts/skill-tests.mjs --mode live --provider openai|anthropic --model <id>
       [--skill <name>|all] [--trials 3] [--temperature <t>] [--out <dir>]
       [--min-trigger-f1 <0..1>] [--min-uplift <-1..1>] [--min-trajectory-pass-rate <0..1>]
+      [--max-adapter-error-share <0..1>] [--max-run-failure-share <0..1>]
 
 Live mode runs each case with and without the skill, with progressive loading,
 then scores trigger F1 and paired uplift with \`npx @evalgate/sdk skill test
 --observations\` and the command/action/read trajectory with this repository's
 scorer. Observations are written to --out so a run can be rescored. With no
-thresholds the run reports and exits 0; thresholds turn it into a gate.`;
+thresholds the run still fails when it measured nothing: no completed
+provider call, more provider errors (HTTP, network, timeout) than
+--max-adapter-error-share (default 0.2), or more failed agent runs than
+--max-run-failure-share (default 0.2). Provider errors are reported apart and
+left out of trajectory scoring. With and without run in alternating order.
+
+Scoring uses ${PINNED_SDK} (override with EVALGATE_SDK or a local
+EVALGATE_SDK_CLI), started without provider keys in its environment.
+EVALGATE_SDK_DISABLE=1 skips SDK scoring and says so in the report.`;
 
 function runSdkSkillTest({ directory, casesPath, observationsPath, trials, minTriggerF1, minUplift }) {
-	const sdk = process.env.EVALGATE_SDK ?? "@evalgate/sdk@latest";
+	if (process.env.EVALGATE_SDK_DISABLE === "1") {
+		return { skipped: true, reason: "SDK scoring disabled (EVALGATE_SDK_DISABLE=1); set EVALGATE_SDK_CLI to a local @evalgate/sdk CLI to score trigger F1 and uplift." };
+	}
+	const sdk = process.env.EVALGATE_SDK ?? PINNED_SDK;
 	const args = ["skill", "test", "--skill", directory, "--cases", casesPath, "--observations", observationsPath, "--trials", String(trials), "--format", "json"];
 	if (minTriggerF1 !== undefined) args.push("--min-trigger-f1", String(minTriggerF1));
 	if (minUplift !== undefined) args.push("--min-uplift", String(minUplift));
 	const command = process.env.EVALGATE_SDK_CLI
 		? [process.execPath, [resolve(process.env.EVALGATE_SDK_CLI), ...args]]
 		: [process.platform === "win32" ? "npx.cmd" : "npx", ["--yes", sdk, ...args]];
-	const result = spawnSync(command[0], command[1], { encoding: "utf8", timeout: 300_000, shell: process.platform === "win32" });
+	const result = spawnSync(command[0], command[1], { encoding: "utf8", timeout: 300_000, shell: process.platform === "win32", env: sdkEnvironment() });
 	const line = (result.stdout ?? "").trim().split(/\r?\n/u).pop() ?? "";
 	try {
 		return JSON.parse(line);
@@ -189,6 +226,10 @@ async function live(args, skills) {
 	const { metadata, chat } = createChatProvider({ provider: args.provider, model: args.model, temperature: args.temperature });
 	if (!chat) {
 		console.log(JSON.stringify({ schemaVersion: 1, mode: "skill_behavior_live", executed: false, status: "skipped", reason: `Missing credentials for ${metadata.provider}`, metadata }));
+		// stdout is usually a report file; name the secret where CI logs show it.
+		const keyName = metadata.provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY";
+		const notice = `Missing credentials for ${metadata.provider}: set ${keyName} (in CI, the repository secret of that name).`;
+		console.error(process.env.GITHUB_ACTIONS === "true" ? `::${args.allowSkip ? "warning" : "error"}::${notice}` : notice);
 		return args.allowSkip ? 0 : 2;
 	}
 	const names = args.skill === "all" ? Object.keys(skills).sort() : [args.skill];
@@ -199,9 +240,11 @@ async function live(args, skills) {
 		if (!skills[name]) throw new Error(`Unknown skill ${name}`);
 		const cases = readCases(name);
 		const observations = [];
-		for (const testCase of cases) {
+		for (const [caseIndex, testCase] of cases.entries()) {
 			for (let trial = 1; trial <= args.trials; trial++) {
-				for (const variant of ["with", "without"]) {
+				// Alternate which variant runs first, so drift and rate limits hit both.
+				const order = (caseIndex + trial) % 2 === 0 ? ["with", "without"] : ["without", "with"];
+				for (const variant of order) {
 					const observation = await runSkillCase({ chat, targetSkill: name, variant, prompt: testCase.prompt });
 					observations.push({ caseId: testCase.id, trial, ...observation });
 				}
@@ -214,15 +257,24 @@ async function live(args, skills) {
 		writeFileSync(observationsPath, observations.map(({ caseId, trial, variant, invokedSkills, output, exitCode }) => JSON.stringify({ caseId, trial, variant, invokedSkills, output, exitCode })).join("\n") + "\n");
 		writeFileSync(fullPath, observations.map((observation) => JSON.stringify(observation)).join("\n") + "\n");
 		const sdkReport = runSdkSkillTest({ directory: skills[name], casesPath, observationsPath, trials: args.trials, minTriggerF1: args.minTriggerF1, minUplift: args.minUplift });
-		const trajectory = scoreTrajectories(cases, observations, name);
+		const adapterErrors = observations.filter((o) => o.adapterError).length;
+		// Provider failures say nothing about the skill: leave them out of the trajectory score.
+		const trajectory = scoreTrajectories(cases, observations.filter((o) => !o.adapterError), name);
 		const usage = (variant) => observations.filter((o) => o.variant === variant).reduce((sum, o) => sum + o.usage.inputTokens + o.usage.outputTokens, 0);
 		const perVariant = (variant) => observations.filter((o) => o.variant === variant).length;
 		const tokens = { with: Math.round(usage("with") / Math.max(1, perVariant("with"))), without: Math.round(usage("without") / Math.max(1, perVariant("without"))) };
-		const runFailures = observations.filter((o) => o.exitCode !== 0).length;
+		const runFailures = observations.filter((o) => o.exitCode !== 0 && !o.adapterError).length;
+		const calls = observations.reduce((sum, o) => sum + (o.usage?.calls ?? 0), 0);
+		const share = (count) => (observations.length === 0 ? null : Number((count / observations.length).toFixed(4)));
+		const health = { observations: observations.length, calls, adapterErrors, adapterErrorShare: share(adapterErrors), maxAdapterErrorShare: args.maxAdapterErrorShare, runFailures, runFailureShare: share(runFailures), maxRunFailureShare: args.maxRunFailureShare, reasons: [] };
+		if (calls === 0) health.reasons.push("no_provider_call_completed");
+		if (health.adapterErrorShare !== null && health.adapterErrorShare > args.maxAdapterErrorShare) health.reasons.push("adapter_error_share_exceeded");
+		if (health.runFailureShare !== null && health.runFailureShare > args.maxRunFailureShare) health.reasons.push("run_failure_share_exceeded");
+		health.healthy = health.reasons.length === 0;
 		const sdkFailed = typeof sdkReport.exitCode === "number" && sdkReport.exitCode !== 0 && (args.minTriggerF1 !== undefined || args.minUplift !== undefined);
 		const trajectoryFailed = args.minTrajectoryPassRate !== undefined && (trajectory.variants.with?.passRate ?? 0) < args.minTrajectoryPassRate;
-		if (sdkFailed || trajectoryFailed || sdkReport.error) failed = true;
-		reports.push({ skill: name, cases: cases.length, sources: countSources(cases), runFailures, sdk: sdkReport, trajectory: { variants: trajectory.variants, failures: trajectory.failures.slice(0, 50) }, meanTokensPerCase: tokens, observationsPath: fullPath });
+		if (sdkFailed || trajectoryFailed || sdkReport.error || !health.healthy) failed = true;
+		reports.push({ skill: name, cases: cases.length, sources: countSources(cases), health, runFailures, adapterErrors, sdk: sdkReport, trajectory: { variants: trajectory.variants, provenance: trajectory.provenance, failures: trajectory.failures.slice(0, 50) }, meanTokensPerCase: tokens, observationsPath: fullPath });
 	}
 	console.log(JSON.stringify({ schemaVersion: 1, mode: "skill_behavior_live", executed: true, metadata, trials: args.trials, reports }));
 	return failed ? 1 : 0;
