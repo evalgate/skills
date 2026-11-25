@@ -33,19 +33,28 @@ taste about wording.
 
 1. Finish the task or stop it safely first. Note the exact step where things
    went wrong.
-2. Check whether it is already known. If `gh` is available and signed in, run
-   `gh issue list --repo evalgate/skills --label papercut --state all --search "<command or code>"`.
+2. Check whether it is already known, with consent. A search sends its terms
+   to GitHub, so ask first: "Can I search EvalGate's public papercut issues
+   for `<redacted terms>`?" Use only redacted terms: a command name, flag,
+   envelope `code` or `failureClass`, never a path, host, ID or message text.
+   With their yes and a signed-in `gh`, run
+   `gh issue list --repo evalgate/skills --label papercut --state all --search "<redacted terms>"`.
    If a matching issue exists, use its workaround for the rest of the session
    and offer to add a short comment instead of a new issue.
 3. Draft the report using the fields below. Redact before showing it:
    no credentials, tokens, customer prompts or outputs, dataset rows, trace
-   payloads, private repository paths or names, email addresses, or
-   organization names. Keep envelope `code`, `failureClass`, `retryable`,
-   versions and flag names; they are what the owner needs.
+   payloads, email addresses, organization names, private repository paths or
+   names, home-directory paths or usernames (write `~`), internal hostnames
+   and base URLs, organization, workspace, project or run IDs, or raw envelope
+   `message` text (summarize it in your own words). Keep envelope `code`,
+   `failureClass`, `retryable`, versions and flag names; they are what the
+   owner needs.
 4. Show the draft to the person and ask: "Want me to file this with
    EvalGate?" The skills repository is public, so filing needs their yes.
-5. With their yes and a signed-in `gh`, file it:
-   `gh issue create --repo evalgate/skills --label papercut --title "<skill or command>: <what broke>" --body-file <draft file>`.
+5. With their yes and a signed-in `gh`, write the draft to a temporary file
+   outside the repository, so it is never committed, then file it:
+   `draft="$(mktemp)"`, write the report to `"$draft"`, and run
+   `gh issue create --repo evalgate/skills --label papercut --title "<skill or command>: <what broke>" --body-file "$draft"`.
    Without `gh`, give them the draft and the link
    `https://github.com/evalgate/skills/issues/new?template=papercut.yml`.
 6. Return to the person's work. Mention the report in one line at most.
@@ -58,7 +67,7 @@ EvalGate versions:   SDK <version from status --json>; skills <commit or "unknow
 Agent and model:     <agent harness and model, if known>
 What I ran:          <redacted command or MCP tool name>
 What I expected:     <from the skill, help text or table>
-What happened:       <code / failureClass / retryable / missing field / message summary>
+What happened:       <code / failureClass / retryable / missing field / summary, not raw message>
 Workaround used:     <what got past it, or "none">
 Suggested fix:       <skill wording, table row, or CLI/SDK change>
 Attempts and cost:   <number of attempts; rough turns or tokens spent, if known>
