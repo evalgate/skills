@@ -811,6 +811,18 @@ async function run() {
 				model: adapter.metadata.model,
 			}),
 		);
+		// stdout is usually redirected to a report file, so say it where a CI
+		// log shows it, and name the secret to set.
+		const keyName =
+			adapter.metadata.provider === "openai"
+				? "OPENAI_API_KEY"
+				: "ANTHROPIC_API_KEY";
+		const notice = `Missing credentials for ${adapter.metadata.provider}: set ${keyName} (in CI, the repository secret of that name).`;
+		console.error(
+			process.env.GITHUB_ACTIONS === "true"
+				? `::${args.allowSkip ? "warning" : "error"}::${notice}`
+				: notice,
+		);
 		return args.allowSkip ? 0 : 2;
 	}
 	const startedAt = Date.now();

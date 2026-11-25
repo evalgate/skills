@@ -226,6 +226,10 @@ async function live(args, skills) {
 	const { metadata, chat } = createChatProvider({ provider: args.provider, model: args.model, temperature: args.temperature });
 	if (!chat) {
 		console.log(JSON.stringify({ schemaVersion: 1, mode: "skill_behavior_live", executed: false, status: "skipped", reason: `Missing credentials for ${metadata.provider}`, metadata }));
+		// stdout is usually a report file; name the secret where CI logs show it.
+		const keyName = metadata.provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY";
+		const notice = `Missing credentials for ${metadata.provider}: set ${keyName} (in CI, the repository secret of that name).`;
+		console.error(process.env.GITHUB_ACTIONS === "true" ? `::${args.allowSkip ? "warning" : "error"}::${notice}` : notice);
 		return args.allowSkip ? 0 : 2;
 	}
 	const names = args.skill === "all" ? Object.keys(skills).sort() : [args.skill];
