@@ -53,6 +53,8 @@ export async function runSkillCase({ chat, targetSkill, variant, prompt, groups 
 			usage: run.usage,
 			latencyMs: Date.now() - startedAt,
 			...(run.error ? { error: run.error } : {}),
+			// A provider failure (HTTP, network, timeout) is not a skill failure.
+			...(run.adapterError ? { adapterError: true, httpStatus: run.httpStatus } : {}),
 		};
 	} catch (error) {
 		return {
@@ -64,6 +66,7 @@ export async function runSkillCase({ chat, targetSkill, variant, prompt, groups 
 			usage: { inputTokens: 0, outputTokens: 0, calls: 0 },
 			latencyMs: Date.now() - startedAt,
 			error: error instanceof Error ? error.message : String(error),
+			adapterError: true,
 		};
 	}
 }
