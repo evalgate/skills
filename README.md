@@ -142,19 +142,37 @@ Four layers, from cheapest to most realistic. Only the last two execute a model.
    `executed: false`; a green fixture run is never a behavioral claim.
 3. **Ablation of the primary skill** (`npm run test:ablation -- --provider
    anthropic --model <id>`). Runs every decision scenario with and without
-   `evaluate-ai-change`, repeated `--trials` times, and reports pass rate with a
-   95% interval per arm, the paired wins and losses, the **noise band** (how
-   often identical trials disagree), whether the difference exceeds it, and the
-   token cost per scenario of each arm. The without arm keeps the output schema
-   and removes only the skill, so a difference is attributable to it.
+   `evaluate-ai-change`, repeated `--trials` times, with the two arms run in
+   alternating order so drift and rate limits hit both. It reports a pass rate
+   per arm with a 95% interval clustered by scenario (trials of one scenario are
+   not independent), the paired wins, losses and ties, and the token cost per
+   scenario of each arm. **Lift is significant** only when an exact two-sided
+   sign test over the paired scenarios has at least 6 decided pairs and
+   p < 0.05 (`--min-decided-pairs`, `--alpha`); the report gives the p-value and
+   decided pairs. The **noise band** (how often identical trials disagree) is
+   descriptive only. The without arm keeps the output schema and the sibling
+   skills it routes to and removes only `evaluate-ai-change`, in both
+   progressive and bundle loading, so a difference is attributable to it.
+   Provider failures (HTTP 429 and 5xx, network errors, timeouts) are reported
+   as `adapterErrors`, kept out of pass and fail, and their tokens still
+   counted. The run exits non-zero as `unhealthy` when no provider call
+   completed or more than 20% of runs were provider failures
+   (`--max-adapter-error-share`, or `SKILL_EVAL_MAX_ADAPTER_ERROR_SHARE`).
 4. **Behavior tests for every skill** (`npm run test:skills:live -- --provider
    anthropic --model <id>`). Each case runs with and without its skill. Trigger
    precision, recall and F1 and the paired task uplift (with a bootstrap 95%
    interval and sign test) come from EvalGate's own
-   `npx @evalgate/sdk skill test --observations`. The command order, forbidden
+   `npx @evalgate/sdk@3.18.2 skill test --observations` (the pinned SDK, run
+   without provider keys in its environment). The command order, forbidden
    actions and commands, action order, and which skill files the agent read are
-   scored by `scripts/score-skill-trajectory.mjs`. Observations are written to
-   `.evalgate/skill-tests/` so a run can be rescored.
+   scored by `scripts/score-skill-trajectory.mjs`. Commands match on whole words
+   in order (`repo scan` does not match `repo scanner`). Each field is labeled
+   by provenance: commands and actions are **self-reported** in the agent's
+   final answer and show what the skill taught; reads are **observed** from the
+   harness's own tool log. The same health rules apply per skill, plus
+   `--max-run-failure-share` (default 0.2) for agent runs that failed for other
+   reasons. Observations are written to `.evalgate/skill-tests/` so a run can
+   be rescored.
 
 Live runs use **progressive loading** by default: the agent sees only each
 skill's name and description, then asks to load a SKILL.md and to read single
