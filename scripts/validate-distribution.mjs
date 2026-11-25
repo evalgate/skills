@@ -83,7 +83,24 @@ if (JSON.stringify(everydaySkills) !== JSON.stringify(["everyday-ai"])) {
 if (existsSync(resolve(skillsRoot, "everyday-ai"))) {
 	failures.push("everyday-ai must not be installed by the default skills/ collection");
 }
-if (!readme.includes("https://github.com/evalgate/skills/tree/main/everyday")) {
+// Parse every URL in the README and require one that is exactly the everyday
+// install path on github.com, not a string that merely contains it.
+const readmeUrls = (readme.match(/https?:\/\/[^\s)<>"'`]+/gu) ?? []).flatMap(
+	(candidate) => {
+		try {
+			return [new URL(candidate)];
+		} catch {
+			return [];
+		}
+	},
+);
+const hasEverydayInstallPath = readmeUrls.some(
+	(url) =>
+		url.protocol === "https:" &&
+		url.hostname === "github.com" &&
+		url.pathname.replace(/\/+$/u, "") === "/evalgate/skills/tree/main/everyday",
+);
+if (!hasEverydayInstallPath) {
 	failures.push("README.md omits the everyday persona install path");
 }
 
