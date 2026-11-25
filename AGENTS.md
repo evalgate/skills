@@ -12,7 +12,10 @@ contracts; it does not contain the private EvalGate application.
 3. Preserve the canonical decision vocabulary and mappings in
    `skills/evaluate-ai-change/assets/decision-contract.schema.json`.
 4. Use the narrower skill under `skills/` when its stated trigger matches the
-   task; do not load every skill by default.
+   task; do not load every skill by default. `everyday/everyday-ai` is the
+   separately installed persona for nontechnical assistants.
+5. When a command fails, use the bundled `references/failure-recovery.md`
+   table. If EvalGate contradicts a skill, use `report-evalgate-friction`.
 
 ## Safety and product boundaries
 
@@ -35,6 +38,17 @@ contracts; it does not contain the private EvalGate application.
 ## Verification
 
 Run `npm test` after changing a skill, reference, schema, scenario, fixture, or
-distribution manifest. The distribution validator, decision-contract tests,
-and scenario scorer are release-blocking evidence.
+distribution manifest. The distribution validator, skill linter, decision-
+contract tests, case validation and scorers are release-blocking evidence.
+
+When you change a skill:
+
+- update its `specs/<skill>.spec.json` if the goal, commands or outputs change;
+- keep or extend its cases in `evaluations/skills/<skill>.cases.jsonl`;
+- edit shared references in `skills/evaluate-ai-change/` and run
+  `node scripts/check-standalone.mjs --sync`;
+- if you add or remove a workaround for SDK behavior, update
+  `evaluations/sdk-papercuts.json`;
+- claim a behavioral improvement only from a live with/without run whose
+  difference exceeds the noise band.
 

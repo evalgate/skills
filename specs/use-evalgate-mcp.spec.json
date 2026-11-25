@@ -1,0 +1,33 @@
+{
+	"$schema": "./skill-spec.schema.json",
+	"skill": "use-evalgate-mcp",
+	"audience": "engineering",
+	"goal": "Use the public docs MCP and the scope-filtered product MCP, with approval and readback for writes.",
+	"outputs": [
+		"tools used and their results",
+		"resource identifiers and readback for any write"
+	],
+	"usesCli": false,
+	"requiredCommands": [],
+	"forbiddenPatterns": [
+		"anonymous write"
+	],
+	"targets": {
+		"agents": [
+			"claude-code",
+			"codex",
+			"cursor",
+			"opencode"
+		],
+		"models": [
+			"anthropic:claude-sonnet-5-5",
+			"openai:gpt-4.1-mini"
+		]
+	},
+	"cases": "evaluations/skills/use-evalgate-mcp.cases.jsonl",
+	"budget": {
+		"maxLines": 500,
+		"maxDescriptionChars": 400,
+		"maxWords": 1000
+	}
+}

@@ -1,0 +1,39 @@
+{
+	"$schema": "./skill-spec.schema.json",
+	"skill": "ask-repository-question",
+	"audience": "engineering",
+	"goal": "Answer a focused question from an exact, authorized repository snapshot with evidence references.",
+	"outputs": [
+		"answer pinned to a 40-character commit",
+		"evidence references",
+		"uncertainty and coverage gaps"
+	],
+	"usesCli": true,
+	"requiredCommands": [
+		"status --json",
+		"repo repositories",
+		"repo scan",
+		"repo ask"
+	],
+	"forbiddenPatterns": [
+		"npx evalgate [a-z]"
+	],
+	"targets": {
+		"agents": [
+			"claude-code",
+			"codex",
+			"cursor",
+			"opencode"
+		],
+		"models": [
+			"anthropic:claude-sonnet-5-5",
+			"openai:gpt-4.1-mini"
+		]
+	},
+	"cases": "evaluations/skills/ask-repository-question.cases.jsonl",
+	"budget": {
+		"maxLines": 500,
+		"maxDescriptionChars": 400,
+		"maxWords": 1000
+	}
+}

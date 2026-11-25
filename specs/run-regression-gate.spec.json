@@ -1,0 +1,41 @@
+{
+	"$schema": "./skill-spec.schema.json",
+	"skill": "run-regression-gate",
+	"audience": "engineering",
+	"goal": "Run a reviewed regression gate and interpret its machine report without weakening policy.",
+	"outputs": [
+		"machine-readable gate or check report",
+		"release readiness conclusion",
+		"next action"
+	],
+	"usesCli": true,
+	"requiredCommands": [
+		"status --json",
+		"capabilities evaluate --format json",
+		"discover --manifest",
+		"gate --format json",
+		"explain --format json"
+	],
+	"forbiddenPatterns": [
+		"npx evalgate [a-z]",
+		"Stable exit codes"
+	],
+	"targets": {
+		"agents": [
+			"claude-code",
+			"codex",
+			"cursor",
+			"opencode"
+		],
+		"models": [
+			"anthropic:claude-sonnet-5-5",
+			"openai:gpt-4.1-mini"
+		]
+	},
+	"cases": "evaluations/skills/run-regression-gate.cases.jsonl",
+	"budget": {
+		"maxLines": 500,
+		"maxDescriptionChars": 400,
+		"maxWords": 1100
+	}
+}

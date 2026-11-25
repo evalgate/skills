@@ -1,0 +1,105 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "EvalGate skill spec",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"skill",
+		"audience",
+		"goal",
+		"outputs",
+		"usesCli",
+		"requiredCommands",
+		"forbiddenPatterns",
+		"targets",
+		"cases",
+		"budget"
+	],
+	"properties": {
+		"$schema": {
+			"type": "string"
+		},
+		"skill": {
+			"type": "string",
+			"pattern": "^[a-z0-9-]+$"
+		},
+		"audience": {
+			"enum": [
+				"engineering",
+				"everyday"
+			]
+		},
+		"goal": {
+			"type": "string",
+			"minLength": 20
+		},
+		"outputs": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			},
+			"minItems": 1
+		},
+		"usesCli": {
+			"type": "boolean"
+		},
+		"requiredCommands": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"forbiddenPatterns": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"targets": {
+			"type": "object",
+			"required": [
+				"agents",
+				"models"
+			],
+			"properties": {
+				"agents": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"models": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"pattern": "^(openai|anthropic):.+"
+					}
+				}
+			}
+		},
+		"cases": {
+			"type": "string"
+		},
+		"budget": {
+			"type": "object",
+			"required": [
+				"maxLines",
+				"maxDescriptionChars",
+				"maxWords"
+			],
+			"properties": {
+				"maxLines": {
+					"type": "integer",
+					"maximum": 500
+				},
+				"maxDescriptionChars": {
+					"type": "integer",
+					"maximum": 1024
+				},
+				"maxWords": {
+					"type": "integer"
+				}
+			}
+		}
+	}
+}

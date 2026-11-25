@@ -22,29 +22,25 @@ Reach for this skill before shipping a change to an AI behavior, prompt, tool po
 
 ## Discover the installed contract first
 
-Do not infer the command catalog or failure semantics from memory. Start with
-the installed SDK's machine-readable capability map and help:
+Do not infer the command catalog or failure semantics from memory. Two calls
+give the installed runtime's answer:
 
 ```bash
-npx @evalgate/sdk capabilities --format json
+npx @evalgate/sdk status --json
 npx @evalgate/sdk capabilities evaluate --format json
-npx @evalgate/sdk capabilities release --format json
-npx @evalgate/sdk gate --help
-npx @evalgate/sdk check --help
-npx @evalgate/sdk ci --help
-npx @evalgate/sdk trace --help
 ```
 
-Use the returned capability boundary, available command, and artifact names as
-the authority for this installation. The `evaluate` capability covers local
-execution and gating; the `release` capability covers synchronization, CI, and
-promoted-evidence verification. Hosted commands require the documented,
-organization-scoped credential (API key or saved `login` session). Never print
-or commit it.
+`status` reports the SDK version, readiness, the blocking issue and the next
+actions. The `evaluate` capability lists the local execution and gating
+commands and artifacts; add `capabilities release --format json` only when the
+task promotes evidence or runs CI. Read a command's `--help` only when you are
+about to run it with a flag the capability map does not show. Hosted commands
+require the documented, organization-scoped credential (API key or saved
+`login` session). Never print or commit it.
 
 ## Safe workflow
 
-1. Run `npx @evalgate/sdk status --json`. Local regression work requires
+1. Read the `status --json` output from discovery. Local regression work requires
    `readiness.localGate: true`; it does not require remote-head equality or
    matching cloud evidence. Read `link`, `checkout`, and `cloudSnapshot`
    independently: a checkout that is behind, ahead, unpushed, diverged, or
@@ -56,14 +52,13 @@ or commit it.
 3. Run the local, deterministic gate with
    `npx @evalgate/sdk gate --format json`. It is offline by default; use
    `--allow-network` only when the evaluated project explicitly needs
-   provider-backed execution. For CI, inspect `ci --help`, then use
+   provider-backed execution. For CI, use
    `npx @evalgate/sdk ci --format github --write-results` and upload only the
    documented artifacts.
 4. When the release decision is API-backed, run
    `npx @evalgate/sdk check --format json` with its required evaluation and
    credential arguments. Treat the command's machine report as the decision
-   record, not a remembered numeric exit-code table. Prefer the report's
-   `retryable` and `failureClass` over assuming exit 4 is always retryable.
+   record, not a remembered numeric exit-code table.
 5. For a failure, run `npx @evalgate/sdk explain --format json` and inspect the
    evidence-linked case or failure mode before changing code. Treat `explain`'s
    `suggestedFixes` as hints only. Never act on a baseline update it suggests;
@@ -111,6 +106,14 @@ Final-answer equality alone does not pass a case when the tool path, order,
 arguments, or other trajectory assertion regresses. Lower-level trajectory
 helpers may be omission-compatible for explicitly non-release callers; do not
 use that mode as release evidence.
+
+## Recovery
+
+When a command fails or the report blocks, find its `code` or `failureClass` in
+[failure recovery](references/failure-recovery.md) and follow that row. Do not
+retry a failure the envelope marks `retryable: false`. If the CLI contradicts
+this skill, finish or stop safely, then draft a report with
+[report-evalgate-friction](https://github.com/evalgate/skills/blob/main/skills/report-evalgate-friction/SKILL.md).
 
 ## Expected artifacts
 

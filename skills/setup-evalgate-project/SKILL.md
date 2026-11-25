@@ -48,13 +48,13 @@ never request or print its value in chat.
 
 ## Safe workflow
 
-1. Inspect the repository and discover the installed runtime before choosing
-   commands: `npx @evalgate/sdk capabilities --format json` and
-   `npx @evalgate/sdk --help`. Then run
-   `npx @evalgate/sdk understand --format json` (or the equivalent command
-   advertised by the installed runtime) to preview product context. Treat
-   inferred risks as hypotheses.
-2. Run `npx @evalgate/sdk status --json` and read `link`, `checkout`,
+1. Discover the installed runtime with two calls:
+   `npx @evalgate/sdk status --json` (version, readiness, blocking issue and
+   next actions) and `npx @evalgate/sdk capabilities evaluate --format json`
+   (commands and artifacts). Then preview product context with
+   `npx @evalgate/sdk understand --format json`; treat inferred risks as
+   hypotheses.
+2. From the same `status` output, read `link`, `checkout`,
    `cloudSnapshot`, and `readiness` independently. Ask the owner to run
    `npx @evalgate/sdk login` only when identity is absent, and
    `npx @evalgate/sdk link` only when durable organization, repository, or root
@@ -95,6 +95,15 @@ never request or print its value in chat.
    evidence is non-empty and passing: `npx @evalgate/sdk baseline update`.
 8. Run `npx @evalgate/sdk gate --format json` locally. Add the documented
    GitHub Actions workflow only after reviewing the diff.
+
+## Recovery
+
+When a command fails or `status` reports a blocking issue, find its `code` or
+`failureClass` in [failure recovery](references/failure-recovery.md) and
+follow that row. A setup that cannot produce passing, non-empty evidence stays
+incomplete. If the CLI contradicts this skill, finish or stop safely, then
+draft a report with
+[report-evalgate-friction](https://github.com/evalgate/skills/blob/main/skills/report-evalgate-friction/SKILL.md).
 
 ## Expected artifacts
 

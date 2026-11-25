@@ -10,6 +10,9 @@ const copies = [
   ["references/authentication-and-credential-handoff.md", "setup-evalgate-project/references/authentication-and-credential-handoff.md"],
   ["references/decision-contract.md", "use-evalgate-mcp/references/decision-contract.md"],
   ["assets/decision-contract.schema.json", "use-evalgate-mcp/assets/decision-contract.schema.json"],
+  ...["ask-repository-question", "collect-agent-traces", "run-regression-gate", "setup-evalgate-project", "use-evalgate-mcp"].map(
+    (skill) => ["references/failure-recovery.md", `${skill}/references/failure-recovery.md`],
+  ),
 ];
 const failures = [];
 for (const [source, target] of copies) {
@@ -44,14 +47,18 @@ export function checkStandalone(directory) {
   return errors;
 }
 // Copy one directory at a time, exactly as a selective installer does.
-for (const entry of readdirSync(skillsRoot, { withFileTypes: true })) {
+const installable = ["skills", "everyday"]
+  .map((group) => resolve(root, group))
+  .filter((group) => existsSync(group))
+  .flatMap((group) => readdirSync(group, { withFileTypes: true }).map((entry) => ({ entry, group })));
+for (const { entry, group } of installable) {
   if (!entry.isDirectory()) continue;
   const temp = mkdtempSync(resolve(tmpdir(), "evalgate-single-skill-"));
   try {
     const installed = resolve(temp, entry.name);
-    cpSync(resolve(skillsRoot, entry.name), installed, { recursive: true });
+    cpSync(resolve(group, entry.name), installed, { recursive: true });
     failures.push(...checkStandalone(installed).map((error) => `${entry.name}: ${error}`));
   } finally { rmSync(temp, { recursive: true, force: true }); }
 }
 if (failures.length) { console.error(failures.join("\n")); process.exitCode = 1; }
-else console.log("PASS: all seven skills resolve references when installed independently");
+else console.log(`PASS: all ${installable.filter(({ entry }) => entry.isDirectory()).length} skills resolve references when installed independently`);

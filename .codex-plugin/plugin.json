@@ -1,6 +1,6 @@
 {
 	"name": "evalgate",
-	"version": "1.2.2",
+	"version": "1.3.0",
 	"description": "Portable EvalGate workflows for behavioral-change analysis, evaluation evidence, regression gates, traces, and repository questions.",
 	"author": {
 		"name": "EvalGate",
@@ -29,7 +29,8 @@
 			"Local evaluation",
 			"Regression gates",
 			"Trace collection",
-			"Repository intelligence"
+			"Repository intelligence",
+			"Friction reports"
 		],
 		"websiteURL": "https://evalgate.com",
 		"privacyPolicyURL": "https://evalgate.com/privacy",

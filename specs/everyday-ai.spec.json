@@ -1,0 +1,32 @@
+{
+	"$schema": "./skill-spec.schema.json",
+	"skill": "everyday-ai",
+	"audience": "everyday",
+	"goal": "Turn a correction the person wants remembered into one short rule and reuse it for that kind of work, with or without EvalGate.",
+	"outputs": [
+		"corrected answer",
+		"one agreed rule kept where the person can see it"
+	],
+	"usesCli": false,
+	"requiredCommands": [],
+	"forbiddenPatterns": [
+		"sign up for EvalGate"
+	],
+	"targets": {
+		"agents": [
+			"microsoft-365-copilot-chat",
+			"chatgpt",
+			"claude"
+		],
+		"models": [
+			"anthropic:claude-sonnet-5-5",
+			"openai:gpt-4.1-mini"
+		]
+	},
+	"cases": "evaluations/skills/everyday-ai.cases.jsonl",
+	"budget": {
+		"maxLines": 500,
+		"maxDescriptionChars": 400,
+		"maxWords": 1500
+	}
+}

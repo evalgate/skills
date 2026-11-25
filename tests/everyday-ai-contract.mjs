@@ -7,8 +7,8 @@ import { resolve } from "node:path";
 // and it must keep the person in control of what is saved and applied.
 const root = resolve(import.meta.dirname, "..");
 const read = (p) => readFileSync(resolve(root, p), "utf8");
-const skill = read("skills/everyday-ai/SKILL.md");
-const limits = read("skills/everyday-ai/references/host-limits.md");
+const skill = read("everyday/everyday-ai/SKILL.md");
+const limits = read("everyday/everyday-ai/references/host-limits.md");
 const readme = read("README.md");
 
 // Only the three real tools, by their real names.
@@ -76,7 +76,7 @@ assert.doesNotMatch(
 
 // Rule quality and revision: rules are checked before keeping and revised in
 // place (same semanticKey and scope), never stacked.
-const quality = read("skills/everyday-ai/references/rule-quality.md");
+const quality = read("everyday/everyday-ai/references/rule-quality.md");
 assert.match(skill, /references\/rule-quality\.md/u);
 assert.match(skill, /Check\s+it\s+before\s+keeping\s+it/u);
 assert.match(quality, /## Check a rule before keeping it/u);
