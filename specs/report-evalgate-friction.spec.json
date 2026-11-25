@@ -1,0 +1,31 @@
+{
+	"$schema": "./skill-spec.schema.json",
+	"skill": "report-evalgate-friction",
+	"audience": "engineering",
+	"goal": "Turn observed EvalGate friction into a short, redacted report that is filed only with the person's approval.",
+	"outputs": [
+		"redacted friction report",
+		"issue link or paste-ready text"
+	],
+	"usesCli": false,
+	"requiredCommands": [],
+	"forbiddenPatterns": [],
+	"targets": {
+		"agents": [
+			"claude-code",
+			"codex",
+			"cursor",
+			"opencode"
+		],
+		"models": [
+			"anthropic:claude-sonnet-5-5",
+			"openai:gpt-4.1-mini"
+		]
+	},
+	"cases": "evaluations/skills/report-evalgate-friction.cases.jsonl",
+	"budget": {
+		"maxLines": 500,
+		"maxDescriptionChars": 400,
+		"maxWords": 700
+	}
+}

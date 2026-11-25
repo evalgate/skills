@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
+export const SKILL_GROUPS = ["skills", "everyday"];
 const digest = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 export function websiteFiles(sourceRoot = root) {
   const files = new Map();
@@ -17,8 +18,13 @@ export function websiteFiles(sourceRoot = root) {
       else files.set(prefix + path + entry.name, readFileSync(resolve(dir, entry.name)));
     }
   }
-  walk(resolve(sourceRoot, "skills"));
-  for (const entry of readdirSync(resolve(sourceRoot, "skills"), { withFileTypes: true }).sort((a,b) => a.name.localeCompare(b.name))) {
+  // Engineering skills live in skills/; the everyday persona lives in its own
+  // folder so a default install into a coding agent does not include it. Both
+  // publish to the same flat website path, so existing URLs keep working.
+  const groups = SKILL_GROUPS.filter((group) => existsSync(resolve(sourceRoot, group)));
+  for (const group of groups) walk(resolve(sourceRoot, group));
+  const entries = groups.flatMap((group) => readdirSync(resolve(sourceRoot, group), { withFileTypes: true }));
+  for (const entry of entries.sort((a,b) => a.name.localeCompare(b.name))) {
     if (!entry.isDirectory()) continue;
     const name = entry.name, file = `${prefix}${name}/SKILL.md`, bytes = files.get(file);
     const description = bytes.toString().match(/^description: (.+)$/mu)?.[1];

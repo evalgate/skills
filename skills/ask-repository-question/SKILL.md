@@ -33,8 +33,9 @@ Use this when an agent needs a concise answer grounded in a durably linked repos
 ## Safe workflow
 
 1. Confirm identity and readiness without printing secrets:
-   `npx @evalgate/sdk whoami` and `npx @evalgate/sdk status --json`
-   (`readiness.hostedAuthenticated`, `readiness.hostedLinked`, `link.status`).
+   `npx @evalgate/sdk status --json` (`identity`, `readiness.hostedAuthenticated`,
+   `readiness.hostedLinked`, `link.status`). Run `whoami` only if you need to
+   know whether a key or a saved session is active.
 2. List connected repositories: `npx @evalgate/sdk repo repositories`.
 3. Scan the exact cloud-targetable commit:
    `npx @evalgate/sdk repo scan --repository <id> --head-sha <40-char-sha>`.
@@ -95,17 +96,15 @@ rate-limit stop, or any degradation reason has not finished looking — report
 the omission and the reason code rather than presenting a scoped "nothing
 found" as a conclusive one.
 
-If no durable repository linkage or credential exists, report that prerequisite as
-what it is — including the case where a read-only key can read prior evidence
-but cannot start a new scan. The CLI returns a machine-readable envelope with an
-exit code, `retryable`, `failureClass`, and recovery actions
-(`MISSING_API_KEY` still exits 5). Trust `retryable` over the exit code (exit 4
-is labelled retryable in the exit table even for some non-retryable failures
-such as a 403/`insufficient_scope`). Relay the envelope instead of retrying,
-and do not fall back to reading local source as though it were the connected
-snapshot.
+If no durable repository linkage or credential exists, report that prerequisite
+as what it is, including the case where a read-only key can read prior
+evidence but cannot start a new scan.
 
-When `link` (or a related handoff) returns `code: human_action_required`
-(legacy `GITHUB_ACCESS_REQUIRED`), the person must open the install URL. When
-it returns `GITHUB_INSTALL_UNAVAILABLE` (503), report an operator
-configuration problem — do not retry.
+## Recovery
+
+When a command fails, find its `code` or `failureClass` in
+[failure recovery](references/failure-recovery.md) and follow that row: relay
+the envelope instead of retrying, and never fall back to reading local source
+as though it were the connected snapshot. If the CLI contradicts this skill,
+finish or stop safely, then draft a report with
+[report-evalgate-friction](https://github.com/evalgate/skills/blob/main/skills/report-evalgate-friction/SKILL.md).

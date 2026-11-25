@@ -22,65 +22,16 @@ Reach for this skill when an MCP-capable agent needs public EvalGate documentati
 
 ## Configure the servers
 
-Use the format documented for the actual client. The example below is for
-**Claude Code project `.mcp.json`**, which expands `${EVALGATE_API_KEY}` from
-the process environment. It is not a universal Desktop or Cursor configuration.
-Never commit a literal token.
+- Documentation server: `https://www.evalgate.com/api/mcp/docs`, anonymous and
+  read-only.
+- Product server: `https://www.evalgate.com/api/mcp`, with
+  `Authorization: Bearer ${EVALGATE_API_KEY}` expanded from the environment or
+  the client's secret store. Anonymous calls return `401`.
 
-```json
-{
-  "mcpServers": {
-    "evalgate-docs": {
-      "type": "http",
-      "url": "https://www.evalgate.com/api/mcp/docs"
-    },
-    "evalgate-product": {
-      "type": "http",
-      "url": "https://www.evalgate.com/api/mcp",
-      "headers": {
-        "Authorization": "Bearer ${EVALGATE_API_KEY}"
-      }
-    }
-  }
-}
-```
-
-For **Cursor `.cursor/mcp.json`**, use URL entries and its `${env:NAME}` syntax:
-
-```json
-{
-  "mcpServers": {
-    "evalgate-docs": { "url": "https://www.evalgate.com/api/mcp/docs" },
-    "evalgate-product": {
-      "url": "https://www.evalgate.com/api/mcp",
-      "headers": { "Authorization": "Bearer ${env:EVALGATE_API_KEY}" }
-    }
-  }
-}
-```
-
-For **Claude Desktop / claude.ai**, add the remote docs URL through the custom
-connector UI. Remote connectors differ from local Desktop server configuration;
-do not paste Claude Code JSON into `claude_desktop_config.json`. Product access
-requires a client-supported authentication flow. Do not assume arbitrary bearer
-headers or EvalGate OAuth interoperability were tested in the Desktop connector.
-If the client cannot supply the required credential, use an authorized client
-with header support instead of claiming it is connected.
-
-Client syntax sources (reviewed 2026-09-30):
-[Claude Code MCP](https://code.claude.com/docs/en/mcp),
-[Cursor MCP](https://cursor.com/docs/mcp), and
-[Claude remote connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
-These are documented formats; no live client handshake was performed here.
-
-The docs server is anonymous and public-content-only. The product server needs
-a token: anonymous tool calls return `401`. Keep the bearer value in the
-client's secret store, not in a checked-in header.
-
-Published plugin manifests in this repository (`mcp.json`, `.mcp.json`) list
-the same URLs without credentials. `mcp.json` uses the Agent Plugins schema
-transport name `streamable-http`; `.mcp.json` uses Claude Code's `http` name.
-Both describe Streamable HTTP, not different endpoints.
+Each client uses a different file and variable syntax. Read
+[client configuration](references/client-configuration.md) for the exact
+Claude Code, Cursor or Claude Desktop format before editing any config. Never
+commit a literal token, and never paste one client's file into another.
 
 ## Smithery and discovery
 
@@ -149,3 +100,11 @@ Every product operation must be attributable to a validated organization princip
 ## Validation
 
 Confirm the client negotiated the advertised MCP transport. For product calls verify the token, scopes, role and tenant boundary; for docs calls verify results come only from the public catalog. Confirm anonymous callers cannot execute writes, read-only users cannot discover writes, and authorized test-workspace writes persist only after approval. If the server is unreachable, report the endpoint and auth prerequisite rather than switching to an undocumented route.
+
+## Recovery
+
+For `401`, `403`, missing tools or a write without readback, follow the hosted
+MCP rows in [failure recovery](references/failure-recovery.md). Never call a
+similarly named tool to work around a missing one. If the server contradicts
+this skill, draft a report with
+[report-evalgate-friction](https://github.com/evalgate/skills/blob/main/skills/report-evalgate-friction/SKILL.md).

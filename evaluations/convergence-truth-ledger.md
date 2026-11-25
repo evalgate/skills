@@ -23,6 +23,14 @@ help, and machine-readable reports outrank memory or examples in this repo.
 
 ## Verification record
 
+- Node SDK check, November 23, 2026: `node scripts/check-commands.mjs` against
+  the installed `@evalgate/sdk@3.18.2` (contract `2026-09-10`) passed for 31
+  Skill/reference files, including the new `failure-recovery.md`, `red-team.md`
+  and `client-configuration.md`. The recovery table's codes were taken from the
+  installed SDK's machine-error classifier and exit constants. The SDK's
+  experimental `skill test` command (trigger F1, paired uplift) was verified
+  end to end against a mock provider with `--observations`; no live model run
+  was performed in this change.
 - Current Node SDK check, November 17, 2026: `node scripts/check-commands.mjs`
   resolved the published npm latest release `@evalgate/sdk@3.18.2`, contract
   `2026-09-10`, 23 capabilities and 72 commands. It checked all 25 Skill/reference

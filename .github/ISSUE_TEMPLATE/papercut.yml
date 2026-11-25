@@ -1,0 +1,63 @@
+name: Papercut (agent or person friction)
+description: An EvalGate skill, command, report field or MCP tool did not behave as documented.
+title: "<skill or command>: <what broke>"
+labels: ["papercut"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Redact before submitting: no credentials, customer prompts or outputs, dataset rows,
+        trace payloads, private repository names or organization names. Keep envelope
+        `code`, `failureClass`, `retryable`, versions and flag names.
+  - type: input
+    id: skill
+    attributes:
+      label: Skill and step
+      placeholder: "run-regression-gate, Safe workflow step 3"
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: EvalGate versions
+      placeholder: "SDK 3.18.2 (from status --json); skills commit abc1234"
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and model
+      placeholder: "Claude Code, claude-sonnet-5-5"
+  - type: textarea
+    id: ran
+    attributes:
+      label: What was run
+      description: Redacted command or MCP tool name.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What was expected
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: code, failureClass, retryable, missing field, or a short message summary.
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround used
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix
+  - type: input
+    id: cost
+    attributes:
+      label: Attempts and cost
+      placeholder: "4 attempts, about 30k tokens"

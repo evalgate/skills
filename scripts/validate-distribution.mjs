@@ -21,7 +21,7 @@ const expectedSkills = [
 	"ask-repository-question",
 	"collect-agent-traces",
 	"evaluate-ai-change",
-	"everyday-ai",
+	"report-evalgate-friction",
 	"run-regression-gate",
 	"setup-evalgate-project",
 	"use-evalgate-mcp",
@@ -71,6 +71,21 @@ const skillNames = readdirSync(skillsRoot, { withFileTypes: true })
 if (JSON.stringify(skillNames) !== JSON.stringify(expectedSkills)) {
 	failures.push(`unexpected skills: ${skillNames.join(", ")}`);
 }
+// The everyday persona is published from its own folder so a default install
+// into a coding agent does not carry a nontechnical skill on every session.
+const everydayRoot = resolve(root, "everyday");
+const everydaySkills = existsSync(everydayRoot)
+	? readdirSync(everydayRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name)
+	: [];
+if (JSON.stringify(everydaySkills) !== JSON.stringify(["everyday-ai"])) {
+	failures.push(`everyday/ must hold exactly everyday-ai, got ${everydaySkills.join(", ")}`);
+}
+if (existsSync(resolve(skillsRoot, "everyday-ai"))) {
+	failures.push("everyday-ai must not be installed by the default skills/ collection");
+}
+if (!readme.includes("https://github.com/evalgate/skills/tree/main/everyday")) {
+	failures.push("README.md omits the everyday persona install path");
+}
 
 for (const skillName of skillNames) {
 	const skillPath = resolve(skillsRoot, skillName, "SKILL.md");
@@ -112,8 +127,8 @@ const pluginManifest = JSON.parse(readFileSync(resolve(root, "plugin.json"), "ut
 const codexPluginManifest = JSON.parse(
 	readFileSync(resolve(root, ".codex-plugin/plugin.json"), "utf8"),
 );
-if (!/^1\.2\./u.test(packageManifest.version ?? "")) {
-	failures.push(`package.json must carry independent Skills 1.2.x version, got ${packageManifest.version}`);
+if (!/^1\.\d+\.\d+$/u.test(packageManifest.version ?? "") || /^1\.[01]\./u.test(packageManifest.version)) {
+	failures.push(`package.json must carry the independent Skills 1.x version (1.2 or later), got ${packageManifest.version}`);
 }
 if (
 	pluginManifest.version !== packageManifest.version ||
@@ -336,7 +351,8 @@ const regressionSkill = readFileSync(
 	"utf8",
 );
 for (const requiredGateText of [
-	"capabilities --format json",
+	"capabilities evaluate --format json",
+	"failure-recovery.md",
 	"--help",
 	"decisionPassed",
 	"evidencePassed",
@@ -408,7 +424,7 @@ const setupSkill = readFileSync(
 	"utf8",
 );
 for (const requiredSetupText of [
-	"capabilities --format json",
+	"capabilities evaluate --format json",
 	"--package-handler",
 	"multiple supported package roots",
 	"fail closed",
@@ -460,9 +476,17 @@ for (const classification of classifications) {
 		failures.push(`primary skill omits canonical classification ${classification}`);
 	}
 }
+// Red-team detail moved to a reference so it loads only for red-team work.
+if (!primarySkill.includes("references/red-team.md")) {
+	failures.push("primary skill does not route red-team work to references/red-team.md");
+}
+const redTeamReference = readFileSync(
+	resolve(skillsRoot, "evaluate-ai-change/references/red-team.md"),
+	"utf8",
+);
 for (const redTeamText of ["/red-team", "get_red_team_workspace", "signed-report"]) {
-	if (!primarySkill.includes(redTeamText)) {
-		failures.push(`primary skill omits red-team contract detail ${redTeamText}`);
+	if (!redTeamReference.includes(redTeamText)) {
+		failures.push(`red-team reference omits contract detail ${redTeamText}`);
 	}
 }
 

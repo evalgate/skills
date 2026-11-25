@@ -21,31 +21,88 @@ jobs:
           node-version: 24
       - run: npm test
       - run: npm run validate
+      - run: npm run lint:skills
       - run: npm run test:behavior
+      - run: npm run test:skills
       - run: node scripts/check-commands.mjs
+      - name: Score the mock live run with EvalGate's own skill tester
+        run: |
+          npm install --no-save --no-package-lock @evalgate/sdk@latest
+          EVALGATE_SDK_CLI=node_modules/@evalgate/sdk/dist/cli/index.js node tests/live-harness-contract.mjs
       - run: npx --yes skills@1.5.18 add . --list
+      - name: Everyday persona is discoverable on its own
+        run: npx --yes skills@1.5.18 add ./everyday --list
 
   behavior-live:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Override with a repository variable, for example
+        # SKILL_EVAL_MODELS='["anthropic:claude-sonnet-5-5","openai:gpt-4.1-mini"]'.
+        # Test the models people actually run these skills with.
+        target: ${{ fromJSON(vars.SKILL_EVAL_MODELS || '["anthropic:claude-sonnet-5-5","openai:gpt-4.1-mini"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Run live behavioral harness
+      - name: Resolve provider and model
+        id: target
+        run: |
+          echo "provider=${TARGET%%:*}" >> "$GITHUB_OUTPUT"
+          echo "model=${TARGET#*:}" >> "$GITHUB_OUTPUT"
+          echo "slug=$(echo "$TARGET" | tr ':/' '--')" >> "$GITHUB_OUTPUT"
+        env:
+          TARGET: ${{ matrix.target }}
+      - name: Ablation of evaluate-ai-change (with and without, 3 trials)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           node scripts/evaluate-ai-change-harness.mjs \
             --mode live \
-            --provider openai \
-            --model gpt-4.1-mini \
-            > live-harness-report.json
-          cat live-harness-report.json
+            --provider "${{ steps.target.outputs.provider }}" \
+            --model "${{ steps.target.outputs.model }}" \
+            --arm both --trials 3 \
+            --min-pass-rate "${{ vars.SKILL_EVAL_MIN_PASS_RATE || '0' }}" \
+            > ablation-report.json
+          node -e 'const r=require("./ablation-report.json"); console.log(JSON.stringify({with:r.arms.with, without:r.arms.without, ablation:{...r.ablation, byScenario:undefined}}, null, 2))'
+      - name: Behavior tests for every skill (with and without, 3 trials)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node scripts/skill-tests.mjs \
+            --mode live \
+            --provider "${{ steps.target.outputs.provider }}" \
+            --model "${{ steps.target.outputs.model }}" \
+            --trials 3 \
+            ${{ vars.SKILL_EVAL_MIN_TRIGGER_F1 && format('--min-trigger-f1 {0}', vars.SKILL_EVAL_MIN_TRIGGER_F1) || '' }} \
+            ${{ vars.SKILL_EVAL_MIN_UPLIFT && format('--min-uplift {0}', vars.SKILL_EVAL_MIN_UPLIFT) || '' }} \
+            > skill-tests-report.json
+          node -e 'for (const r of require("./skill-tests-report.json").reports) console.log(r.skill, "F1", r.sdk?.trigger?.f1, "uplift", r.sdk?.task?.difference, "interval", JSON.stringify(r.sdk?.task?.interval && [r.sdk.task.interval.lower, r.sdk.task.interval.upper]), "trajectory", JSON.stringify(r.trajectory.variants), "tokens", JSON.stringify(r.meanTokensPerCase))'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: live-harness-report
-          path: live-harness-report.json
+          name: live-skill-evals-${{ steps.target.outputs.slug }}
+          path: |
+            ablation-report.json
+            skill-tests-report.json
+            .evalgate/skill-tests/
+
+  mcp-context:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    # Informational until the first measurement sets a budget.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Measure tool-definition tokens the product MCP adds to context
+        env:
+          EVALGATE_API_KEY: ${{ secrets.EVALGATE_MCP_MEASURE_KEY }}
+        run: npm run measure:mcp

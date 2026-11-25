@@ -1,6 +1,6 @@
 ---
 name: evaluate-ai-change
-description: Determine and execute the smallest defensible EvalGate workflow for an AI change, response, artifact, or non-chat model event. Use for prompts, models, tools, agents, retrieval, skills, MCP, judges, datasets, routing, safety, cost, latency, release policy, external optimization imports, or governed improvement and confirmation cycles; skip it for work proven not to affect observable AI behavior.
+description: Decide whether an AI change needs evaluation and run the smallest defensible EvalGate check. Use when a diff, response or artifact can change prompt, model, tool, agent, retrieval, judge, dataset, safety, cost or latency behavior, or before releasing one. Skip work proven not to affect observable AI behavior.
 ---
 
 # Evaluate an AI change
@@ -62,11 +62,8 @@ permission are separate facts. Read
 `references/portable-artifact-workflows.md` for the bounded workflow and its
 unsupported states.
 
-Steps 3 and 4 are conditional on purpose. A durably linked repository can be
-inspected without a checkout, so requiring a local config before routing would
-force a clone on a caller whose question the repository commands already
-answer. If there is no checkout, skip to the routing table below and let intent
-and authorized context decide.
+Steps 3 and 4 need a checkout; a linked repository can be inspected without
+one, so with no checkout go straight to the routing table below.
 
 Use `references/eval-authoring.md` when new coverage is
 needed. Do not invent a parallel configuration when the repository already has
@@ -126,63 +123,53 @@ Then:
 | Start or receive background checks | The host exposes a verified event hook and delivery path, and a bounded grant authorizes both | Use only the advertised hook and authorized scope; otherwise keep evaluation explicitly invoked or post-response advisory |
 | Reuse an approved standard in another host | Same tenant and attributable delegated person, authorized scope, exact standard version, and retrieval operation are verified | Retrieve that version and preserve an independent second-task result; otherwise report the missing identity, permission, or capability |
 
-Prefer the least authority that answers the question. A durably linked
-repository with no scaffold and no GitHub repository-write access can already
-reach evidence-linked understanding through `npx @evalgate/sdk repo`; do not
-route such a caller into scaffolding or baseline acceptance to answer a
-question the repository commands already cover. The EvalGate scopes differ by
-step: reading existing evidence needs `eval:read`, while starting a scan needs
-`eval:write` and membership because it mints new evidence. Neither is GitHub
-repository-write access.
+Prefer the least authority that answers the question. A linked repository with
+no scaffold and no GitHub repository-write access can already reach
+evidence-linked understanding through `npx @evalgate/sdk repo`; do not route
+that caller into scaffolding or baseline acceptance. Reading existing evidence
+needs `eval:read`; starting a scan needs `eval:write` and membership because it
+mints evidence. Neither is GitHub repository-write access.
 
-Escalate only when the intent requires it, and only with the specific authority
-that step needs. Reading does not authorize executing, executing does not
-authorize a patch, a patch does not authorize a push, and a passing gate does
-not authorize a merge or a pull request. Opening or merging a pull request is
-separate explicit authority: neither repository intelligence nor passing
-evidence grants it. A good result never widens a grant.
+Escalate only with the specific authority each step needs. Reading does not
+authorize executing, executing does not authorize a patch, a patch does not
+authorize a push, and a passing gate does not authorize a merge or a pull
+request. A good result never widens a grant.
 
-When the caller explicitly asks for local, offline, or credential-free work —
-or is working from uncommitted changes or a restricted network — use the local
-path and do not route them to hosted signup. `npx @evalgate/sdk init --local`
-needs no credential and no network. Running inside a cloud sandbox is not by
-itself a reason to choose either path: decide from intent, connectivity, and
-demonstrated authority, not from where the agent happens to execute.
+When the caller asks for local, offline or credential-free work, or is working
+from uncommitted changes or a restricted network, use the local path
+(`npx @evalgate/sdk init --local` needs no credential or network) and do not
+route them to hosted signup. Decide from intent, connectivity and demonstrated
+authority, not from where the agent happens to execute.
 
-Match evidence to the exact target snapshot, even if another scan completes
-while you are asking. A newer scan is not evidence about the commit under
-discussion.
-
-When a scan returns no findings, say what was covered and what that scope can
-and cannot settle, then propose the next authorized evaluation. Do not invent a
-defect, and do not report a clean static read as proof of runtime correctness.
-
-Prefer `npx @evalgate/sdk capabilities --format json` and the published CLI help
-over remembered commands. Hosted actions require an attributable,
-organization-scoped credential. Never request, print, or commit its value.
+Match evidence to the exact target snapshot; a newer scan is not evidence about
+the commit under discussion. When a scan returns no findings, say what was
+covered and what that scope cannot settle, then propose the next authorized
+evaluation. Never invent a defect or present a clean static read as runtime
+proof. Hosted actions need an attributable, organization-scoped credential;
+never request, print, or commit its value. Read
+`references/authentication-and-credential-handoff.md` before any sign-in,
+link or key handoff.
 
 An attachment visible in a host UI is not necessarily readable by a remote
-tool. Product MCP now has a narrow, **authenticated** write surface for creating
-evaluations, adding test cases, starting runs, and recording traces when role,
-scopes, user approval and the live tool schema permit. Route those requests to
-[use-evalgate-mcp](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md)
-and its scoped-authoring reference. Do not use product MCP for arbitrary resource
-uploads, portable check submission, feedback, standards adoption, or background
-grants: those are not released there. A write response is not gate evidence,
-model promotion, release approval, or authorization to merge.
+tool. Product MCP now has a narrow, **authenticated** write surface (create
+evaluations, add test cases, start runs, record traces) when role, scopes, user
+approval and the live tool schema permit; route those requests to
+[use-evalgate-mcp](https://github.com/evalgate/skills/blob/main/skills/use-evalgate-mcp/SKILL.md).
+Resource uploads, portable check submission, feedback, standards adoption and
+background grants are not released there. A write response is not gate
+evidence, release approval, or authorization to merge.
 
 ## Evidence triage
 
-Before executing a release-bearing workflow, record the installed SDK version,
-the capability contract, and the exact command help. Read those from the
-runtime rather than from this document: the capability map and machine-readable
-report are authoritative, and a version pinned in prose goes stale while the
-contract keeps moving. Do not invent provider flags, numeric exit meanings, or
-hosted routes from an older SDK. Verify the live vocabulary against
-`npx @evalgate/sdk capabilities --format json`. `gate` is
-deterministic/offline by default, and `--allow-network` is the explicit opt-in
-for provider-backed project evaluators. Use `--dry-run` only as a preview,
-never as release evidence.
+Before executing a release-bearing workflow, record the installed SDK version
+(`status --json` reports it) and the capability contract
+(`npx @evalgate/sdk capabilities evaluate --format json`, plus `release` when
+promoting). Read a command's `--help` only when you are about to run it with a
+flag the capability map does not show. These runtime answers outrank this
+document: do not invent provider flags, numeric exit meanings, or hosted routes.
+`gate` is deterministic/offline by default, and `--allow-network` is the
+explicit opt-in for provider-backed project evaluators. Use `--dry-run` only as
+a preview, never as release evidence.
 
 Read `references/provider-and-cache.md` for provider states, admission policy,
 cache lineage, judge operational path, and network semantics.
@@ -197,18 +184,10 @@ outcomes; missing or truncated observations fail closed as
 `trajectory_evidence_missing` (exit `REGRESSION`), and an unsafe intermediate
 tool action remains a failure even when the final answer is right.
 
-For red-team or framework-control work, use the hosted capability and scoped
-API only when discovered in the installed contract. Keep attack evidence and
-benign utility evidence distinct. A framework/control reference records
-provenance and a reviewed mapping rationale; it does not prove implementation,
-compliance, certification, endorsement, partnership, or affiliation.
-
-In the published capability map, red-team is a cloud capability at the
-`/red-team` workspace. The documented CLI/API discovery entry is
-`npx @evalgate/sdk api get_red_team_workspace --format json`; campaign, run,
-finding, promotion, and signed-report operations are exposed by the returned
-contract, not by an invented local command. Missing observations or a provider
-failure remain incomplete evidence, not a passing control result.
+For red-team or framework-control work, read `references/red-team.md` before
+acting. Red-team is a hosted capability; keep attack evidence and benign
+utility evidence distinct, and never treat a control mapping as proof of
+compliance.
 
 ## Evaluate and classify
 
@@ -275,6 +254,13 @@ latency, and cost. Use `status: "not_measured"` with a concrete reason when a
 dimension has no valid evidence; never estimate, infer, or fabricate a metric
 just to complete the object.
 
-Use `references/troubleshooting.md` when the workflow cannot
-produce valid evidence. Never claim safety or release readiness for an
-unexercised runtime, model, provider, dataset, authorization, or policy boundary.
+Never claim safety or release readiness for an unexercised runtime, model,
+provider, dataset, authorization, or policy boundary.
+
+## Recovery
+
+When a command fails, a report blocks, or the workflow cannot produce valid
+evidence, find the signal in [failure recovery](references/failure-recovery.md)
+and follow that row. An invalid run is neither a pass nor a product regression.
+If the CLI contradicts this skill, finish or stop safely, then draft a report
+with [report-evalgate-friction](https://github.com/evalgate/skills/blob/main/skills/report-evalgate-friction/SKILL.md).

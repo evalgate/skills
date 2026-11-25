@@ -46,6 +46,13 @@ Install globally when the client supports user-wide skills:
 npx skills add evalgate/skills --skill evaluate-ai-change --global
 ```
 
+The everyday-assistant skill is a separate persona, so a default install into a
+coding agent does not load it. Install it on its own:
+
+```bash
+npx skills add https://github.com/evalgate/skills/tree/main/everyday
+```
+
 Inspect what will be discovered before installation:
 
 ```bash
@@ -62,17 +69,26 @@ references using progressive disclosure.
 
 ## Skills
 
-- `evaluate-ai-change` — primary host-neutral decision framework for AI changes,
+Engineering skills (`skills/`, installed by default):
+
+- `evaluate-ai-change`: primary host-neutral decision framework for AI changes,
   responses, non-repository artifacts, and non-chat events, including minimum
   sufficient coverage, result classification, anti-gaming, failure-to-eval
   conversion, experiments, and release decisions.
-- `setup-evalgate-project` — preview and apply a reviewed first project scaffold.
-- `run-regression-gate` — run and interpret a gate without weakening policy.
-- `collect-agent-traces` — add bounded, redacted trace evidence.
-- `ask-repository-question` — inspect an authorized immutable repository snapshot.
-- `use-evalgate-mcp` — use public documentation, scoped product reads, and approved, permission-bound evaluation authoring tools.
-- `everyday-ai` — for nontechnical work in Microsoft 365 Copilot Chat, ChatGPT
-  or Claude: turn a correction the person wants remembered into one short rule
+- `setup-evalgate-project`: preview and apply a reviewed first project scaffold.
+- `run-regression-gate`: run and interpret a gate without weakening policy.
+- `collect-agent-traces`: add bounded, redacted trace evidence.
+- `ask-repository-question`: inspect an authorized immutable repository snapshot.
+- `use-evalgate-mcp`: use public documentation, scoped product reads, and
+  approved, permission-bound evaluation authoring tools.
+- `report-evalgate-friction`: when an EvalGate command, flag, report field or
+  skill instruction contradicts what actually happened, draft a short redacted
+  report and file it only with the person's approval.
+
+Everyday persona (`everyday/`, installed separately):
+
+- `everyday-ai`: for nontechnical work in Microsoft 365 Copilot Chat, ChatGPT
+  or Claude, turn a correction the person wants remembered into one short rule
   and reuse it for that kind of work. Works with no setup, keeping rules in the
   assistant or with the person. If the assistant is already connected to
   EvalGate (pilot, not yet released), it saves the correction and suggests a
@@ -109,76 +125,87 @@ anonymous and read-only. The product MCP can expose `evaluations.create`,
 callers. See [scoped MCP authoring](skills/use-evalgate-mcp/references/scoped-authoring.md)
 and [MCP Registry publication](docs/MCP_REGISTRY.md).
 
-## Evaluate the skill
+## How the skills are evaluated
 
-`evaluations/evaluate-ai-change.scenarios.jsonl` defines provider-neutral
-decision scenarios, including adversarial cache, provider, trajectory,
-credential, runner, red-team, and anti-gaming cases A–S. Run an agent with and without the skill, serialize its
-decisions to JSONL, then score them:
+Four layers, from cheapest to most realistic. Only the last two execute a model.
 
-```bash
-node scripts/score-skill-evaluation.mjs path/to/results.jsonl --json
-```
+1. **Lint** (`npm run lint:skills`). Pass/fail rules on every skill: a spec in
+   `specs/`, body and description budgets, a numbered workflow, a `## Recovery`
+   section linking the bundled `failure-recovery.md` table for CLI skills, no
+   unbounded "retry" advice, every bundled reference reachable from SKILL.md,
+   no MCP server files inside a skill, the spec's required commands present and
+   its forbidden patterns absent. `--report` prints the token budget per skill.
+2. **Contract fixtures** (`npm test`). The decision scenarios for
+   `evaluate-ai-change` (`evaluations/evaluate-ai-change.scenarios.jsonl`,
+   including adversarial cases A to S), case files for every other skill
+   (`evaluations/skills/*.cases.jsonl`), and a scorer self-test. These report
+   `executed: false`; a green fixture run is never a behavioral claim.
+3. **Ablation of the primary skill** (`npm run test:ablation -- --provider
+   anthropic --model <id>`). Runs every decision scenario with and without
+   `evaluate-ai-change`, repeated `--trials` times, and reports pass rate with a
+   95% interval per arm, the paired wins and losses, the **noise band** (how
+   often identical trials disagree), whether the difference exceeds it, and the
+   token cost per scenario of each arm. The without arm keeps the output schema
+   and removes only the skill, so a difference is attributable to it.
+4. **Behavior tests for every skill** (`npm run test:skills:live -- --provider
+   anthropic --model <id>`). Each case runs with and without its skill. Trigger
+   precision, recall and F1 and the paired task uplift (with a bootstrap 95%
+   interval and sign test) come from EvalGate's own
+   `npx @evalgate/sdk skill test --observations`. The command order, forbidden
+   actions and commands, action order, and which skill files the agent read are
+   scored by `scripts/score-skill-trajectory.mjs`. Observations are written to
+   `.evalgate/skill-tests/` so a run can be rescored.
 
-The scorer reports decision correctness and evidence-reporting completeness as
-separate results. It checks activation, primary classification, release
-decision, required actions, prohibited anti-gaming behavior, the canonical
-decision enum, and explicit coverage of quality, protected slices, reliability,
-latency, and cost. Unknown labels and contradictory classification/release
-combinations fail decision scoring; missing measured evidence fails reporting
-scoring. `not_measured` is valid only with a reason, so agents can stay complete
-without fabricating metrics. The scorer does not pretend to run an agent or
-replace EvalGate's runtime evidence. Compare Skill versions as immutable
-experiment candidates and retain the agent/model, trials, dataset, tokens,
-cost, latency, and result provenance.
+Live runs use **progressive loading** by default: the agent sees only each
+skill's name and description, then asks to load a SKILL.md and to read single
+references, as a real Agent Skills client does. `--loading bundle` (everything
+in one prompt) remains available as a ceiling. Both use the shared loop in
+`scripts/lib/agent-loop.mjs`.
 
-For a provider-neutral behavioral smoke test, run the deterministic harness:
-
-```bash
-node scripts/evaluate-ai-change-harness.mjs
-```
-
-The harness reports `mode: "contract_fixture"` and `executed: false` so its
-passing result cannot be mistaken for a live provider or runtime evaluation.
-An integration may opt into live mode with a credential-safe ESM adapter that
-exports `evaluateScenario({ scenario })`; without an adapter, live mode returns
-`not_run` rather than fabricating execution evidence.
-
-Validate the distribution and positive/negative fixtures:
-
-```bash
-npm test
-npm run test:behavior
-```
-
-The committed behavioral harness is provider-neutral. Its default
-`contract_fixture` mode checks the decision and evidence contract without
-pretending to run an agent or model; an optional live adapter must be supplied
-explicitly and receives the primary Skill, every routed child Skill, and the
-reviewed references used by that routing path. It reports whether it actually
-executed. See the
-[convergence truth ledger](evaluations/convergence-truth-ledger.md) for
-the runtime facts this distribution is allowed to teach.
+To score with the SDK runner directly:
 
 ```bash
-node scripts/evaluate-ai-change-harness.mjs --mode fixture
-node scripts/evaluate-ai-change-harness.mjs --mode live --adapter ./my-adapter.mjs
-node scripts/evaluate-ai-change-harness.mjs --mode live --provider openai --model <model-id>
-node scripts/evaluate-ai-change-harness.mjs --mode live --provider openai --model <model-id> --allow-skip
-node scripts/evaluate-ai-change-harness.mjs --compare ./adapter-a.mjs,./adapter-b.mjs
-node scripts/evaluate-ai-change-harness.mjs --compare-providers openai:<model-a>,anthropic:<model-b>
+npx @evalgate/sdk skill test --skill skills/run-regression-gate \
+  --cases .evalgate/skill-tests/run-regression-gate.sdk-cases.jsonl --trials 3 --format json \
+  --runner "node scripts/skill-test-runner.mjs --provider anthropic --model <id>"
 ```
 
-The comparison form is an optional model/provider experiment boundary: each
-adapter owns its credential-safe invocation and should export provenance such
-as provider and model in `metadata`. Missing credentials or an absent adapter
-is reported as skipped/not run, never as a fabricated pass. A requested live or
-comparison run with zero executions exits with status `2`; pass `--allow-skip`
-only when an explicitly allowed skip is desired. It does not turn skipped
-reports into behavioral evidence. Built-in OpenAI and Anthropic adapters are
-opt-in and read only `OPENAI_API_KEY` or
-`ANTHROPIC_API_KEY` from the process environment; they never print or persist
-those values.
+Every case records its `source`: `authored`, `real` or `golden`. Today all
+cases are authored. The target mix is mostly real prompts graded on
+trajectory; redacted prompts from friction reports and accepted issues are the
+intended source, added as `real` cases.
+
+Pass rates of 70% to 90% on non-deterministic cases can be healthier than
+100%: a case every model always passes may not be measuring anything. Read a
+lift only against the noise band.
+
+The earlier entry points still work: `node scripts/score-skill-evaluation.mjs
+path/to/results.jsonl --json` scores serialized decisions, and
+`node scripts/evaluate-ai-change-harness.mjs --mode fixture | live | compare`
+keeps its adapter contract (`evaluateScenario({ scenario, skill, arm })`).
+Missing credentials are reported as skipped, never as a pass; a requested live
+run with zero executions exits `2` unless `--allow-skip` is set. Built-in
+adapters read only `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` and never print or
+persist them.
+
+## Keeping skills correct over time
+
+- **Recovery table.** `skills/evaluate-ai-change/references/failure-recovery.md`
+  maps each envelope `code` / `failureClass` and gate code from the SDK to what
+  to do and what never to do. It is copied byte for byte into every CLI skill by
+  `scripts/check-standalone.mjs --sync`.
+- **Friction reports.** `report-evalgate-friction` lets an agent turn drift it
+  hits (a rejected flag, a missing field, a code the table lacks) into a
+  redacted issue using `.github/ISSUE_TEMPLATE/papercut.yml`, labelled
+  `papercut`. Agents search existing papercuts first and reuse known
+  workarounds.
+- **SDK papercut ledger.** `evaluations/sdk-papercuts.json` lists every
+  workaround the skills carry because of SDK behavior, with the SDK fix that
+  would let us delete it. The linter fails if an open workaround disappears
+  without the ledger being updated, or if a fixed one is still in a skill.
+- **Specs.** `specs/<skill>.spec.json` records each skill's goal, outputs,
+  required commands, forbidden patterns, target agents and models, and budget.
+  The spec, not the wording, is what must survive a rewrite for a new model.
 
 ## MCP servers
 
@@ -190,7 +217,11 @@ those values.
 - Documentation MCP: `https://www.evalgate.com/api/mcp/docs` — public,
   read-only reviewed documentation.
 
-The Agent Plugin configuration is published in [`mcp.json`](mcp.json). Never
+The Agent Plugin configuration is published in [`mcp.json`](mcp.json). An
+installed MCP server adds every tool definition to every request; measure that
+cost with `npm run measure:mcp` (set `EVALGATE_API_KEY` to see the
+role-filtered list an authenticated agent loads). Skills never install MCP
+servers themselves; the linter rejects MCP files inside a skill. Never
 commit credentials into MCP configuration. MCP results are evidence inputs, not
 a separate release-decision format: an agent using them must emit the canonical
 `evaluate-ai-change` classification and derived release decision.

@@ -50,6 +50,10 @@ run(["tests/distribution-regressions.mjs"], 0);
 run(["tests/mcp-authoring-contract.mjs"], 0);
 run(["tests/everyday-ai-contract.mjs"], 0);
 run(["tests/mcp-registry-contract.mjs"], 0);
+run(["scripts/lint-skills.mjs"], 0);
+run(["scripts/check-standalone.mjs"], 0);
+run(["scripts/skill-tests.mjs"], 0);
+run(["tests/live-harness-contract.mjs"], 0);
 run(
 	[
 		"scripts/score-skill-evaluation.mjs",

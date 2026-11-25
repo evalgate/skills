@@ -1,0 +1,39 @@
+{
+	"$schema": "./skill-spec.schema.json",
+	"skill": "evaluate-ai-change",
+	"audience": "engineering",
+	"goal": "Decide whether an AI change needs evaluation, run the smallest defensible EvalGate workflow, and return one canonical decision.",
+	"outputs": [
+		"canonical decision object (classification, invokeEvalGate, releaseDecision)",
+		"evidence summary across quality, protected slices, reliability, latency and cost",
+		"commands run and remaining uncertainty"
+	],
+	"usesCli": true,
+	"requiredCommands": [
+		"status --json",
+		"capabilities evaluate --format json",
+		"understand --format json"
+	],
+	"forbiddenPatterns": [
+		"npx evalgate [a-z]",
+		"baseline update --force"
+	],
+	"targets": {
+		"agents": [
+			"claude-code",
+			"codex",
+			"cursor",
+			"opencode"
+		],
+		"models": [
+			"anthropic:claude-sonnet-5-5",
+			"openai:gpt-4.1-mini"
+		]
+	},
+	"cases": "evaluations/skills/evaluate-ai-change.cases.jsonl",
+	"budget": {
+		"maxLines": 500,
+		"maxDescriptionChars": 400,
+		"maxWords": 2400
+	}
+}

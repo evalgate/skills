@@ -178,9 +178,10 @@ OpenAPI or the protected-resource metadata; do not guess routes or scopes.
   Read the `WWW-Authenticate` challenge and its `resource_metadata` link.
 - `403 Forbidden`: the credential is valid but lacks a required scope or
   organization permission. Request a least-privilege replacement from an
-  authorized organization member; do not guess broader scopes. Prefer the
+  authorized organization member; do not guess broader scopes. Use the
   machine envelope's `retryable` and `failureClass` (for example
-  `insufficient_scope`) over remembering that exit 4 is always retryable.
+  `insufficient_scope`), never the exit number; see
+  [failure recovery](failure-recovery.md).
 - `429 Too Many Requests`: honor `Retry-After` and the advertised rate-limit
   headers. Do not poll faster or retry indefinitely.
 - Link `code: human_action_required` (legacy `GITHUB_ACCESS_REQUIRED`): the

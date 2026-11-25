@@ -1,0 +1,105 @@
+{
+	"$comment": "Workarounds the skills carry because of SDK or product behavior. Every agent pays tokens to read each workaround on every load, so the goal is to fix the SDK and delete the skill text. scripts/lint-skills.mjs enforces this ledger: an open entry's phrases must still be present (so the ledger stays true), and a fixed entry's phrases must be gone (so the workaround is actually deleted once the fix ships).",
+	"schemaVersion": 1,
+	"papercuts": [
+		{
+			"id": "PC-001",
+			"title": "The unscoped npm name `evalgate` belongs to a third party",
+			"kind": "workaround",
+			"status": "open",
+			"fix": "Acquire the `evalgate` npm name (or publish an official shim that re-exports @evalgate/sdk), then delete the warning from every skill.",
+			"workaround": [
+				{ "file": "skills/evaluate-ai-change/SKILL.md", "phrase": "the unscoped npm package is a third-party package" },
+				{ "file": "skills/run-regression-gate/SKILL.md", "phrase": "the unscoped npm package is a third-party package" },
+				{ "file": "skills/setup-evalgate-project/SKILL.md", "phrase": "the unscoped npm package is a third-party package" },
+				{ "file": "skills/collect-agent-traces/SKILL.md", "phrase": "the unscoped npm package is a third-party package" },
+				{ "file": "skills/ask-repository-question/SKILL.md", "phrase": "the unscoped npm package is a third-party package" }
+			]
+		},
+		{
+			"id": "PC-002",
+			"title": "traceOpenAI captures prompts and outputs by default",
+			"kind": "workaround",
+			"status": "open",
+			"fix": "Default `captureInput` and `captureOutput` to false (privacy by default) and require an explicit opt-in, matching `tracePolicy` modes.",
+			"workaround": [
+				{ "file": "skills/collect-agent-traces/SKILL.md", "phrase": "captureInput: false, captureOutput: false" }
+			]
+		},
+		{
+			"id": "PC-003",
+			"title": "metadata_only and allowlist rename every trace to \"redacted\"",
+			"kind": "workaround",
+			"status": "open",
+			"fix": "Keep a caller-supplied safe name (for example a `safeName` field validated against a pattern) instead of overwriting every name.",
+			"workaround": [
+				{ "file": "skills/collect-agent-traces/SKILL.md", "phrase": "rename every trace to" }
+			]
+		},
+		{
+			"id": "PC-004",
+			"title": "/api/collector and /api/traces use different field casing",
+			"kind": "workaround",
+			"status": "open",
+			"fix": "Accept both snake_case and camelCase on both endpoints, or deprecate one endpoint.",
+			"workaround": [
+				{ "file": "skills/collect-agent-traces/SKILL.md", "phrase": "snake_case wire fields" }
+			]
+		},
+		{
+			"id": "PC-005",
+			"title": "The SDK library ignores a saved CLI login",
+			"kind": "workaround",
+			"status": "open",
+			"fix": "Let `new AIEvalClient()` fall back to the saved CLI session when no key is passed, so one sign-in works for both.",
+			"workaround": [
+				{ "file": "skills/collect-agent-traces/SKILL.md", "phrase": "still needs an explicit key" },
+				{ "file": "skills/ask-repository-question/SKILL.md", "phrase": "still needs an explicit key" },
+				{ "file": "skills/evaluate-ai-change/references/authentication-and-credential-handoff.md", "phrase": "still needs an explicit key" }
+			]
+		},
+		{
+			"id": "PC-006",
+			"title": "The Python CLI can lag the Node CLI",
+			"kind": "workaround",
+			"status": "open",
+			"fix": "Publish Python and Node CLIs from one command registry and fail the release when they diverge.",
+			"workaround": [
+				{ "file": "skills/evaluate-ai-change/SKILL.md", "phrase": "Discover the installed Python CLI before choosing it" },
+				{ "file": "skills/collect-agent-traces/SKILL.md", "phrase": "Discover installed Python CLI capabilities first" }
+			]
+		},
+		{
+			"id": "PC-007",
+			"title": "status reports BASELINE_MISSING with exitCode 11, which is IO_ERROR in the exit table",
+			"kind": "sdk_bug",
+			"status": "open",
+			"fix": "Give each blocking code its own documented exit, or report BASELINE_NOT_ACCEPTED (15) for a missing reviewed baseline. Observed in @evalgate/sdk 3.18.2.",
+			"workaround": []
+		},
+		{
+			"id": "PC-008",
+			"title": "Agents need two calls to learn readiness and commands",
+			"kind": "feature",
+			"status": "open",
+			"fix": "Add `status --json --capabilities <area>` (or an `agent-context` command) that returns version, readiness, blocking issue, next actions and the relevant command contract in one call. Then every skill's discovery step becomes one command.",
+			"workaround": []
+		},
+		{
+			"id": "PC-009",
+			"title": "No way to see which skill drove a CLI or API call",
+			"kind": "feature",
+			"status": "open",
+			"fix": "Read an optional `EVALGATE_AGENT_SKILL` (name@version) and append it to the User-Agent (`evalgate-js/<version> skill/<name>@<version>`), with no prompt or file content. That gives per-skill usage, error rate and retention without new collection. Only then teach skills to set it.",
+			"workaround": []
+		},
+		{
+			"id": "PC-010",
+			"title": "`skill test --runner` aborts the whole run on one failed runner call",
+			"kind": "sdk_bug",
+			"status": "open",
+			"fix": "Record a failed runner call as an observation with a non-zero exitCode (a failed task) instead of throwing, so one provider timeout does not discard every paired result. scripts/skill-tests.mjs works around this by collecting observations itself and scoring with --observations.",
+			"workaround": []
+		}
+	]
+}

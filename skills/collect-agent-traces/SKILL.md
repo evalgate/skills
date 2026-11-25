@@ -58,6 +58,15 @@ Use this when an agent workflow needs inspectable traces for evaluation, debuggi
 9. Use the local gate for release blocking. Hosted traces are evidence and
    shared history; they do not replace the repository’s reviewed baseline.
 
+## Recovery
+
+When a command or upload fails, find its `code` or `failureClass` in
+[failure recovery](references/failure-recovery.md) and follow that row. A
+`403` on trace upload means the key lacks `traces:write`; ask for that scope,
+not a broader key. If the CLI or SDK contradicts this skill, finish or stop
+safely, then draft a report with
+[report-evalgate-friction](https://github.com/evalgate/skills/blob/main/skills/report-evalgate-friction/SKILL.md).
+
 ## Expected artifacts
 
 Provide the integration diff, redaction policy (including `tracePolicy.mode`),

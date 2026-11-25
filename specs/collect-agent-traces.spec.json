@@ -1,0 +1,38 @@
+{
+	"$schema": "./skill-spec.schema.json",
+	"skill": "collect-agent-traces",
+	"audience": "engineering",
+	"goal": "Add bounded, redacted traces and verify them before broad collection.",
+	"outputs": [
+		"integration diff",
+		"redaction policy",
+		"sample trace id",
+		"verification result"
+	],
+	"usesCli": true,
+	"requiredCommands": [
+		"doctor --quick"
+	],
+	"forbiddenPatterns": [
+		"npx evalgate [a-z]",
+		"full_content_explicit_opt_in by default"
+	],
+	"targets": {
+		"agents": [
+			"claude-code",
+			"codex",
+			"cursor",
+			"opencode"
+		],
+		"models": [
+			"anthropic:claude-sonnet-5-5",
+			"openai:gpt-4.1-mini"
+		]
+	},
+	"cases": "evaluations/skills/collect-agent-traces.cases.jsonl",
+	"budget": {
+		"maxLines": 500,
+		"maxDescriptionChars": 400,
+		"maxWords": 800
+	}
+}
