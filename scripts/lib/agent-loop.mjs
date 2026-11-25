@@ -117,12 +117,21 @@ function emptyUsage() {
 	return { inputTokens: 0, outputTokens: 0, calls: 0 };
 }
 
+/** Count one completed provider call and add the tokens it reported, if any. */
 export function addUsage(total, usage) {
+	total.calls += 1;
 	if (!usage) return total;
 	total.inputTokens += Number(usage.prompt_tokens ?? usage.input_tokens ?? 0);
 	total.outputTokens += Number(usage.completion_tokens ?? usage.output_tokens ?? 0);
-	total.calls += 1;
 	return total;
+}
+
+/**
+ * A provider failure (HTTP status, network error, timeout) says nothing about
+ * the skill. Callers exclude these from skill pass/fail and report them apart.
+ */
+export function isAdapterError(error) {
+	return Boolean(error && (typeof error.status === "number" || error.adapterError === true || error.name === "TypeError" || error.name === "AbortError"));
 }
 
 /**
@@ -197,7 +206,22 @@ export async function runAgentTask({ chat, system, userContent, catalog = [], pr
 	const loaded = new Map();
 	const byName = new Map(catalog.map((skill) => [skill.name, skill]));
 	for (let turn = 0; turn <= MAX_LOADING_TURNS; turn++) {
-		const reply = await chat({ system, messages });
+		let reply;
+		try {
+			reply = await chat({ system, messages });
+		} catch (error) {
+			// Keep the tokens already spent on earlier turns of this task.
+			return {
+				final: undefined,
+				error: "adapter_error",
+				adapterError: true,
+				httpStatus: typeof error?.status === "number" ? error.status : undefined,
+				detail: error instanceof Error ? error.message : String(error),
+				trajectory,
+				invokedSkills,
+				usage,
+			};
+		}
 		addUsage(usage, reply.usage);
 		const parsed = parseTurn(reply.content);
 		messages.push({ role: "assistant", content: reply.content ?? "" });
@@ -258,15 +282,71 @@ export function wilsonInterval(successes, total, z = 1.96) {
 
 /**
  * Noise band: how often repeated trials of the same arm disagree on one case.
- * 0 means every trial agreed; 0.5 means a coin flip. A with/without difference
- * smaller than this band is not evidence of lift.
+ * 0 means every trial agreed; 0.5 means a coin flip. Descriptive only: lift is
+ * decided by pairedSignTest over scenarios, not by comparing against this band.
+ * Outcomes of null (a provider failure) are ignored.
  */
 export function noiseBand(outcomesByCase) {
-	const cases = [...outcomesByCase.values()].filter((outcomes) => outcomes.length > 1);
+	const cases = [...outcomesByCase.values()]
+		.map((outcomes) => outcomes.filter((outcome) => outcome !== null))
+		.filter((outcomes) => outcomes.length > 1);
 	if (cases.length === 0) return null;
 	const disagreement = cases.map((outcomes) => {
 		const passes = outcomes.filter(Boolean).length;
 		return Math.min(passes, outcomes.length - passes) / outcomes.length;
 	});
 	return Number((disagreement.reduce((sum, value) => sum + value, 0) / cases.length).toFixed(4));
+}
+
+/** log(n choose k) via a running sum; exact enough for n up to a few thousand. */
+function logChoose(n, k) {
+	let value = 0;
+	for (let index = 1; index <= k; index++) value += Math.log(n - k + index) - Math.log(index);
+	return value;
+}
+
+export const DEFAULT_MIN_DECIDED_PAIRS = 6;
+export const DEFAULT_ALPHA = 0.05;
+
+/**
+ * Exact two-sided sign test on paired scenario outcomes. Each scenario is one
+ * pair (with vs without); ties carry no information and are dropped. Lift is
+ * significant only when enough scenarios are decided and the split of wins and
+ * losses would be unlikely under no effect.
+ */
+export function pairedSignTest(wins, losses, { alpha = DEFAULT_ALPHA, minDecidedPairs = DEFAULT_MIN_DECIDED_PAIRS } = {}) {
+	const decided = wins + losses;
+	if (decided === 0) {
+		return { test: "exact_sign_test", decidedPairs: 0, pValue: null, alpha, minDecidedPairs, significant: false, direction: null };
+	}
+	const smaller = Math.min(wins, losses);
+	let tail = 0;
+	for (let k = 0; k <= smaller; k++) tail += Math.exp(logChoose(decided, k) - decided * Math.LN2);
+	const pValue = Number(Math.min(1, 2 * tail).toFixed(6));
+	const significant = decided >= minDecidedPairs && pValue < alpha && wins !== losses;
+	return {
+		test: "exact_sign_test",
+		decidedPairs: decided,
+		pValue,
+		alpha,
+		minDecidedPairs,
+		significant,
+		direction: wins > losses ? "with_better" : wins < losses ? "without_better" : "none",
+	};
+}
+
+/**
+ * Scenario-clustered interval for a pass rate. Trials of one scenario are not
+ * independent, so the unit is the scenario: the mean of per-scenario pass
+ * rates with a normal interval over scenarios (clamped to [0, 1]).
+ */
+export function scenarioClusteredInterval(perScenarioRates, z = 1.96) {
+	const rates = perScenarioRates.filter((rate) => typeof rate === "number" && Number.isFinite(rate));
+	const n = rates.length;
+	if (n === 0) return { method: "scenario_clustered_normal", scenarios: 0, mean: null, lower: null, upper: null };
+	const mean = rates.reduce((sum, rate) => sum + rate, 0) / n;
+	const variance = n > 1 ? rates.reduce((sum, rate) => sum + (rate - mean) ** 2, 0) / (n - 1) : 0;
+	const margin = n > 1 ? z * Math.sqrt(variance / n) : 1;
+	const round = (value) => Number(Math.min(1, Math.max(0, value)).toFixed(4));
+	return { method: "scenario_clustered_normal", scenarios: n, mean: round(mean), lower: round(mean - margin), upper: round(mean + margin) };
 }

@@ -5,9 +5,39 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { discoverSkillDirectories, readFrontmatter } from "./lib/agent-loop.mjs";
 
 const root = resolve(import.meta.dirname, "..");
+
+/**
+ * Phrases that describe a retry loop with no bound. They are refused anywhere
+ * in a skill body, even next to "never" or "do not": an agent skimming the
+ * line can take the phrase as the instruction.
+ */
+export const UNBOUNDED_RETRY_PHRASES = Object.freeze([
+	/\buntil (?:it'?s |the \w+ (?:is|are) )?green\b/iu,
+	/\buntil (?:it|they|the \w+) pass(?:es)?\b/iu,
+	/\bkeep (?:re-?trying|trying|re-?running)\b/iu,
+	/\bretry (?:it |them |the \w+ )?until\b/iu,
+	/\bretry (?:forever|indefinitely|repeatedly)\b/iu,
+]);
+
+// A retry is bounded when the line forbids it, caps it, or names a fix instead.
+const RETRY_BOUND = /\b(never|not|don't|doesn't|without|at most|once|instead|marks)\b/iu;
+
+/** Why a line teaches an unbounded retry, or undefined when it does not. */
+export function unboundedRetryProblem(line) {
+	const phrase = UNBOUNDED_RETRY_PHRASES.find((pattern) => pattern.test(line));
+	if (phrase) return `uses the unbounded retry phrase "${line.match(phrase)[0]}"`;
+	if (/\b(try again|retry)\b/iu.test(line) && !RETRY_BOUND.test(line)) return "retries without a bound or a fix";
+	return undefined;
+}
+
+// Imported for its rules (tests) the module does not scan the repository.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+
+function main() {
 const failures = [];
 const rows = [];
 const fail = (message) => failures.push(message);
@@ -67,9 +97,8 @@ for (const directory of directories) {
 		if (!existsSync(resolve(directory, "references/failure-recovery.md"))) fail(`${label}: references/failure-recovery.md is not bundled`);
 	}
 	for (const line of body.split(/\r?\n/u)) {
-		if (/\b(try again|retry)\b/iu.test(line) && !/\b(never|not|don't|doesn't|no|without|at most|once|instead|marks|until green)\b/iu.test(line)) {
-			fail(`${label}: recovery advice "${line.trim().slice(0, 80)}" retries without a bound or a fix`);
-		}
+		const problem = unboundedRetryProblem(line);
+		if (problem) fail(`${label}: recovery advice "${line.trim().slice(0, 80)}" ${problem}`);
 	}
 
 	// Progressive disclosure: every bundled reference must be reachable from SKILL.md.
@@ -129,4 +158,5 @@ if (failures.length) {
 	process.exitCode = 1;
 } else {
 	console.log(`PASS: ${rows.length} skills meet spec, budget, workflow, recovery and papercut-ledger rules`);
+}
 }

@@ -4,6 +4,7 @@
 		"apply_init_after_approval",
 		"ask_approval",
 		"ask_before_filing",
+		"ask_before_search",
 		"ask_for_full_sha",
 		"ask_human_action",
 		"ask_pinned_question",

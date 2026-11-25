@@ -127,7 +127,7 @@ unredacted prompts.
 
 ## Safety boundary
 
-Do not lower thresholds, delete failing cases, retry until green, mutate release configuration, or upload failed context to the hosted platform without an explicit operator choice. Probabilistic checks need the configured repetition and pass-rate evidence; one lucky retry is not a pass.
+Do not lower thresholds, delete failing cases, re-run a failed check hoping for a pass, mutate release configuration, or upload failed context to the hosted platform without an explicit operator choice. Probabilistic checks need the configured repetition and pass-rate evidence; one lucky retry is not a pass.
 
 ## Validation
 

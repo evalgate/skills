@@ -14,10 +14,15 @@ import {
 	buildCatalog,
 	bundleSystemPrompt,
 	createChatProvider,
+	DEFAULT_ALPHA,
+	DEFAULT_MIN_DECIDED_PAIRS,
 	discoverSkillDirectories,
+	isAdapterError,
 	noiseBand,
+	pairedSignTest,
 	progressiveSystemPrompt,
 	runAgentTask,
+	scenarioClusteredInterval,
 	wilsonInterval,
 } from "./lib/agent-loop.mjs";
 
@@ -57,15 +62,31 @@ function skillCommit() {
 	}
 }
 
-function assembleSkillBundle() {
+const routedSkillFiles = [
+	"setup-evalgate-project/SKILL.md",
+	"run-regression-gate/SKILL.md",
+	"collect-agent-traces/SKILL.md",
+	"ask-repository-question/SKILL.md",
+	"use-evalgate-mcp/SKILL.md",
+];
+
+/**
+ * The bundle for one arm. "with" carries the evaluated skill, its references
+ * and the sibling skills it routes to; "without" carries the same sibling
+ * skills and output contract, and only the evaluated skill removed. Progressive
+ * loading removes the same single skill from the catalog, so the without arm
+ * means the same thing in both loading modes.
+ */
+function assembleSkillBundle(arm = "with") {
+	if (arm === "without") {
+		return [
+			...routedSkillFiles.map((file) =>
+				`Routed Skill: ${file}\n${readFileSync(resolve(root, "skills", file), "utf8")}`,
+			),
+			outputContract(),
+		].join("\n\n");
+	}
 	const primary = readFileSync(skillPath, "utf8");
-	const routedSkillFiles = [
-		"setup-evalgate-project/SKILL.md",
-		"run-regression-gate/SKILL.md",
-		"collect-agent-traces/SKILL.md",
-		"ask-repository-question/SKILL.md",
-		"use-evalgate-mcp/SKILL.md",
-	];
 	const referenceFiles = readdirSync(
 		resolve(root, "skills/evaluate-ai-change/references"),
 	)
@@ -85,10 +106,10 @@ function outputContract() {
 	].join("\n\n");
 }
 
-function skillSections(primary, routedSkillFiles, referenceFiles) {
+function skillSections(primary, routedFiles, referenceFiles) {
 	return [
 		`Primary Skill: ${skillPath}\n${primary}`,
-		...routedSkillFiles.map((file) =>
+		...routedFiles.map((file) =>
 			`Routed Skill: ${file}\n${readFileSync(resolve(root, "skills", file), "utf8")}`,
 		),
 		...referenceFiles.map((file) =>
@@ -111,6 +132,14 @@ function readJsonLines(filePath) {
 }
 
 
+function envShare(name, fallback) {
+	const value = process.env[name];
+	if (value === undefined || value === "") return fallback;
+	const parsed = Number(value);
+	if (!(parsed >= 0 && parsed <= 1)) throw new Error(`${name} must be between 0 and 1`);
+	return parsed;
+}
+
 function parseArgs(argv) {
 	const args = {
 		mode: "fixture",
@@ -126,6 +155,9 @@ function parseArgs(argv) {
 		loading: "progressive",
 		temperature: undefined,
 		minPassRate: 1,
+		maxAdapterErrorShare: envShare("SKILL_EVAL_MAX_ADAPTER_ERROR_SHARE", 0.2),
+		minDecidedPairs: DEFAULT_MIN_DECIDED_PAIRS,
+		alpha: DEFAULT_ALPHA,
 	};
 	for (let index = 0; index < argv.length; index++) {
 		const argument = argv[index];
@@ -177,6 +209,12 @@ function parseArgs(argv) {
 			args.temperature = Number(argv[++index]);
 		} else if (argument === "--min-pass-rate" && argv[index + 1]) {
 			args.minPassRate = Number(argv[++index]);
+		} else if (argument === "--max-adapter-error-share" && argv[index + 1]) {
+			args.maxAdapterErrorShare = Number(argv[++index]);
+		} else if (argument === "--min-decided-pairs" && argv[index + 1]) {
+			args.minDecidedPairs = Number(argv[++index]);
+		} else if (argument === "--alpha" && argv[index + 1]) {
+			args.alpha = Number(argv[++index]);
 		} else if (argument === "--allow-skip") {
 			args.allowSkip = true;
 		} else if (argument === "--help" || argument === "-h") {
@@ -199,6 +237,15 @@ function parseArgs(argv) {
 	}
 	if (!(args.minPassRate >= 0 && args.minPassRate <= 1)) {
 		throw new Error("--min-pass-rate must be between 0 and 1");
+	}
+	if (!(args.maxAdapterErrorShare >= 0 && args.maxAdapterErrorShare <= 1)) {
+		throw new Error("--max-adapter-error-share must be between 0 and 1");
+	}
+	if (!Number.isInteger(args.minDecidedPairs) || args.minDecidedPairs < 1) {
+		throw new Error("--min-decided-pairs must be a positive integer");
+	}
+	if (!(args.alpha > 0 && args.alpha < 1)) {
+		throw new Error("--alpha must be between 0 and 1");
 	}
 	if (args.temperature !== undefined && !(args.temperature >= 0 && args.temperature <= 2)) {
 		throw new Error("--temperature must be between 0 and 2");
@@ -226,6 +273,14 @@ Options:
   --loading bundle        Concatenate every skill and reference into one prompt (ceiling)
   --temperature <t>       Sampling temperature for built-in adapters (provider default if unset)
   --min-pass-rate <r>     Fraction of with-skill trials that must pass the contract (default 1)
+  --max-adapter-error-share <r>
+                          Fail the run when more than this share of scenario runs
+                          ended in a provider error (HTTP, network, timeout), or no
+                          provider call succeeded (default 0.2; env
+                          SKILL_EVAL_MAX_ADAPTER_ERROR_SHARE)
+  --min-decided-pairs <n> Scenarios with a with/without difference needed before
+                          lift can be significant (default ${DEFAULT_MIN_DECIDED_PAIRS})
+  --alpha <a>             Significance level of the paired sign test (default ${DEFAULT_ALPHA})
   --allow-skip             Allow requested live/compare runs with no execution to exit 0
   --compare <a>,<b>       Compare two explicit adapters (optional model/provider comparison)
   --compare-providers <a:m1>,<b:m2>
@@ -239,8 +294,13 @@ OpenAI/Anthropic provider adapter (OPENAI_API_KEY or ANTHROPIC_API_KEY).
 Reports include parse status, provider/model,
 Skill revision, hashes, latency, token usage, loading trajectory and contract
 score without raw prompts or secrets. The without arm keeps the output schema
-and removes only the evaluated skill, so a difference is attributable to it.
-A with/without difference inside the noise band is not evidence of lift.
+and the sibling skills and removes only the evaluated skill, in both loading
+modes, so a difference is attributable to it. Arms run interleaved per
+scenario in alternating order, so provider drift and rate limits hit both.
+Lift is decided by an exact two-sided sign test over scenarios (each scenario
+is one pair; ties are dropped), not by the noise band, which is descriptive.
+Pass-rate intervals are clustered by scenario. Provider failures are reported
+as adapter errors and excluded from skill pass/fail.
 Requested live/compare execution with no adapter run exits 2 unless
 --allow-skip is explicit.`);
 }
@@ -277,13 +337,15 @@ function createBuiltinAdapter(provider, model, { loading = "progressive", temper
 						catalog,
 						`${contract}\n\nWhen you answer, reply {"final": <decision object>}.`,
 					)
-				: arm === "without"
-					? contract
-					: bundleSystemPrompt([assembleSkillBundle()], "");
+				: bundleSystemPrompt([assembleSkillBundle(arm)], "");
 			const run = await runAgentTask({ chat, system, userContent, catalog, progressive });
 			if (run.error) {
-				const error = new Error(`Agent run for ${scenario.scenarioId} ended with ${run.error}`);
+				const error = new Error(`Agent run for ${scenario.scenarioId} ended with ${run.error}${run.detail ? `: ${run.detail}` : ""}`);
 				error.agentRun = run;
+				if (run.adapterError) {
+					error.adapterError = true;
+					error.status = run.httpStatus;
+				}
 				throw error;
 			}
 			const failures = validateDecisionContract(run.final, { requireScenarioId: true });
@@ -303,164 +365,298 @@ function emptyUsage() {
 	return { inputTokens: 0, outputTokens: 0, calls: 0 };
 }
 
-async function runAdapter(adapter, scenarios, skillBundle, arm = "with") {
-	const results = [];
-	const parseFailures = [];
-	const promptHashes = {};
-	const outputHashes = {};
-	const latencyMsByScenario = {};
-	const trajectories = {};
-	const invokedSkills = {};
-	const usage = emptyUsage();
-	const armBundle = arm === "without" ? outputContract() : skillBundle;
-	for (const scenario of scenarios) {
-		const startedAt = Date.now();
-		let result;
-		try {
-			result = await adapter.evaluateScenario({
-				system: armBundle,
-				instructions: armBundle,
-				skill: armBundle,
-				arm,
-				scenario,
-				repositoryContext: scenario.repositoryContext ?? {},
-				availableEvidence: scenario.availableEvidence ?? {},
-				outputSchema: decisionSchema,
-			});
-		} catch (error) {
-			// One bad model turn must not abort the remaining scenarios: record it
-			// as a failure of this scenario and keep measuring.
-			latencyMsByScenario[scenario.scenarioId] = Date.now() - startedAt;
-			const run = error?.agentRun;
-			if (run) {
-				trajectories[scenario.scenarioId] = run.trajectory;
-				invokedSkills[scenario.scenarioId] = run.invokedSkills;
-				for (const key of Object.keys(usage)) usage[key] += run.usage?.[key] ?? 0;
-			}
-			parseFailures.push({
-				scenarioId: scenario.scenarioId,
-				reason: "adapter_error",
-				detail: error instanceof Error ? error.message : String(error),
-			});
-			continue;
-		}
-		latencyMsByScenario[scenario.scenarioId] = Date.now() - startedAt;
-		if (result?.__agentRun) {
-			trajectories[scenario.scenarioId] = result.trajectory;
-			invokedSkills[scenario.scenarioId] = result.invokedSkills;
-			for (const key of Object.keys(usage)) usage[key] += result.usage?.[key] ?? 0;
-			result = result.decision;
-		}
-		promptHashes[scenario.scenarioId] = hash(
-			`${armBundle}\n${JSON.stringify(scenario)}`,
-		);
-		outputHashes[scenario.scenarioId] = hash(JSON.stringify(result ?? null));
-		if (!result || typeof result !== "object" || Array.isArray(result)) {
-			parseFailures.push({
-				scenarioId: scenario.scenarioId,
-				reason: "non_object_result",
-			});
-			continue;
-		}
-		const contractFailures = validateDecisionContract(result, {
-			requireScenarioId: true,
-		});
-		if (contractFailures.length > 0) {
-			parseFailures.push({
-				scenarioId: scenario.scenarioId,
-				reason: "invalid_decision_contract",
-				detail: contractFailures,
-			});
-		}
-		results.push(result);
-	}
+function emptyRun() {
 	return {
-		results,
-		parseFailures,
-		promptHashes,
-		outputHashes,
-		latencyMsByScenario,
-		trajectories,
-		invokedSkills,
-		usage,
+		results: [],
+		parseFailures: [],
+		adapterErrors: [],
+		promptHashes: {},
+		outputHashes: {},
+		latencyMsByScenario: {},
+		trajectories: {},
+		invokedSkills: {},
+		usage: emptyUsage(),
 	};
 }
 
-/** Scenario IDs with no decision or reporting failure in one scored trial. */
-function passedScenarioIds(scenarios, score) {
+function addRunUsage(usage, partial) {
+	for (const key of Object.keys(usage)) usage[key] += partial?.[key] ?? 0;
+}
+
+/** Run one scenario for one arm and record it into `run`. */
+async function runScenario(adapter, scenario, armBundle, arm, run) {
+	const startedAt = Date.now();
+	let result;
+	try {
+		result = await adapter.evaluateScenario({
+			system: armBundle,
+			instructions: armBundle,
+			skill: armBundle,
+			arm,
+			scenario,
+			repositoryContext: scenario.repositoryContext ?? {},
+			availableEvidence: scenario.availableEvidence ?? {},
+			outputSchema: decisionSchema,
+		});
+	} catch (error) {
+		// One bad turn must not abort the remaining scenarios. A provider failure
+		// is reported apart and excluded from skill pass/fail; anything else (bad
+		// JSON, a broken contract, the loading turn limit) is a skill failure.
+		run.latencyMsByScenario[scenario.scenarioId] = Date.now() - startedAt;
+		const agentRun = error?.agentRun;
+		if (agentRun) {
+			run.trajectories[scenario.scenarioId] = agentRun.trajectory;
+			run.invokedSkills[scenario.scenarioId] = agentRun.invokedSkills;
+			addRunUsage(run.usage, agentRun.usage);
+		}
+		const detail = error instanceof Error ? error.message : String(error);
+		if (isAdapterError(error)) {
+			run.adapterErrors.push({
+				scenarioId: scenario.scenarioId,
+				reason: "adapter_error",
+				httpStatus: typeof error?.status === "number" ? error.status : undefined,
+				detail,
+			});
+		} else {
+			run.parseFailures.push({ scenarioId: scenario.scenarioId, reason: "agent_failure", detail });
+		}
+		return;
+	}
+	run.latencyMsByScenario[scenario.scenarioId] = Date.now() - startedAt;
+	if (result?.__agentRun) {
+		run.trajectories[scenario.scenarioId] = result.trajectory;
+		run.invokedSkills[scenario.scenarioId] = result.invokedSkills;
+		addRunUsage(run.usage, result.usage);
+		result = result.decision;
+	}
+	run.promptHashes[scenario.scenarioId] = hash(`${armBundle}\n${JSON.stringify(scenario)}`);
+	run.outputHashes[scenario.scenarioId] = hash(JSON.stringify(result ?? null));
+	if (!result || typeof result !== "object" || Array.isArray(result)) {
+		run.parseFailures.push({ scenarioId: scenario.scenarioId, reason: "non_object_result" });
+		return;
+	}
+	const contractFailures = validateDecisionContract(result, { requireScenarioId: true });
+	if (contractFailures.length > 0) {
+		run.parseFailures.push({
+			scenarioId: scenario.scenarioId,
+			reason: "invalid_decision_contract",
+			detail: contractFailures,
+		});
+	}
+	run.results.push(result);
+}
+
+/** Run every scenario once for one arm (compare mode and single-arm use). */
+async function runAdapter(adapter, scenarios, arm = "with") {
+	const run = emptyRun();
+	const armBundle = assembleSkillBundle(arm);
+	for (const scenario of scenarios) await runScenario(adapter, scenario, armBundle, arm, run);
+	return run;
+}
+
+/**
+ * Run every arm and trial with the arms interleaved per scenario. The order
+ * alternates by trial and scenario, so neither arm always goes first and
+ * provider drift or rate limiting lands on both arms alike.
+ */
+async function runInterleaved(adapter, scenarios, armNames, trials) {
+	const bundles = Object.fromEntries(armNames.map((arm) => [arm, assembleSkillBundle(arm)]));
+	const runs = Object.fromEntries(armNames.map((arm) => [arm, Array.from({ length: trials }, emptyRun)]));
+	const latency = Object.fromEntries(armNames.map((arm) => [arm, Array.from({ length: trials }, () => 0)]));
+	for (let trial = 0; trial < trials; trial++) {
+		for (let index = 0; index < scenarios.length; index++) {
+			const order = (trial + index) % 2 === 0 ? armNames : [...armNames].reverse();
+			for (const arm of order) {
+				const startedAt = Date.now();
+				await runScenario(adapter, scenarios[index], bundles[arm], arm, runs[arm][trial]);
+				latency[arm][trial] += Date.now() - startedAt;
+			}
+		}
+	}
+	return Object.fromEntries(
+		armNames.map((arm) => [
+			arm,
+			runs[arm].map((run, index) => ({
+				trial: index + 1,
+				run,
+				score: scoreSkillEvaluation(scenarios, run.results),
+				latencyMs: latency[arm][index],
+			})),
+		]),
+	);
+}
+
+/**
+ * Per-scenario outcome for one trial: true (passed), false (failed the skill
+ * contract) or null (a provider failure, excluded from skill pass/fail).
+ */
+function trialOutcomes(scenarios, trial) {
 	const failed = new Set(
-		[...score.decisionFailures, ...score.reportingFailures].map((failure) => failure.scenarioId),
+		[...trial.score.decisionFailures, ...trial.score.reportingFailures].map((failure) => failure.scenarioId),
 	);
-	return new Set(
-		scenarios.map((scenario) => scenario.scenarioId).filter((id) => !failed.has(id)),
+	for (const failure of trial.run.parseFailures) failed.add(failure.scenarioId);
+	const adapterErrored = new Set(trial.run.adapterErrors.map((failure) => failure.scenarioId));
+	return new Map(
+		scenarios.map((scenario) => [
+			scenario.scenarioId,
+			adapterErrored.has(scenario.scenarioId) ? null : !failed.has(scenario.scenarioId),
+		]),
 	);
+}
+
+function scenarioRate(outcomes) {
+	const counted = outcomes.filter((outcome) => outcome !== null);
+	return counted.length === 0 ? null : counted.filter(Boolean).length / counted.length;
 }
 
 function summarizeArm(scenarios, trialRuns) {
 	const outcomesByCase = new Map(scenarios.map((scenario) => [scenario.scenarioId, []]));
 	const usage = emptyUsage();
 	let latencyMs = 0;
+	let adapterErrors = 0;
+	let trialsPassed = 0;
 	for (const trial of trialRuns) {
-		const passed = passedScenarioIds(scenarios, trial.score);
+		const outcomes = trialOutcomes(scenarios, trial);
+		// A trial passes when every scenario it scored passed; provider failures
+		// are neither passes nor failures of the skill.
+		if ([...outcomes.values()].every((outcome) => outcome !== false)) trialsPassed++;
 		for (const scenario of scenarios) {
-			outcomesByCase.get(scenario.scenarioId).push(passed.has(scenario.scenarioId));
+			outcomesByCase.get(scenario.scenarioId).push(outcomes.get(scenario.scenarioId));
 		}
-		for (const key of Object.keys(usage)) usage[key] += trial.run.usage[key];
+		addRunUsage(usage, trial.run.usage);
 		latencyMs += trial.latencyMs;
+		adapterErrors += trial.run.adapterErrors.length;
 	}
-	const passes = [...outcomesByCase.values()].flat().filter(Boolean).length;
-	const total = scenarios.length * trialRuns.length;
+	const counted = [...outcomesByCase.values()].flat().filter((outcome) => outcome !== null);
+	const passes = counted.filter(Boolean).length;
+	const attempts = scenarios.length * trialRuns.length;
 	return {
 		trials: trialRuns.length,
-		trialsPassed: trialRuns.filter((trial) => trial.score.passed).length,
-		scenarioPassRate: total === 0 ? null : Number((passes / total).toFixed(4)),
-		interval: wilsonInterval(passes, total),
+		trialsPassed,
+		scenarioRuns: attempts,
+		scoredScenarioRuns: counted.length,
+		adapterErrors,
+		scenarioPassRate: counted.length === 0 ? null : Number((passes / counted.length).toFixed(4)),
+		// Trials of one scenario are not independent: the interval is clustered by scenario.
+		interval: scenarioClusteredInterval(
+			scenarios.map((scenario) => scenarioRate(outcomesByCase.get(scenario.scenarioId))),
+		),
 		noiseBand: noiseBand(outcomesByCase),
 		usage,
 		meanTokensPerScenario:
-			total === 0 ? null : Math.round((usage.inputTokens + usage.outputTokens) / total),
+			attempts === 0 ? null : Math.round((usage.inputTokens + usage.outputTokens) / attempts),
 		latencyMs,
 		outcomesByCase,
 	};
 }
 
-function pairedComparison(scenarios, withArm, withoutArm) {
+function pairedComparison(scenarios, withArm, withoutArm, { alpha, minDecidedPairs }) {
 	let wins = 0;
 	let losses = 0;
 	let ties = 0;
+	let unscored = 0;
 	const byScenario = {};
 	for (const scenario of scenarios) {
-		const rate = (outcomes) => outcomes.filter(Boolean).length / outcomes.length;
-		const withRate = rate(withArm.outcomesByCase.get(scenario.scenarioId));
-		const withoutRate = rate(withoutArm.outcomesByCase.get(scenario.scenarioId));
-		const outcome = withRate > withoutRate ? "win" : withRate < withoutRate ? "loss" : "tie";
-		if (outcome === "win") wins++;
-		else if (outcome === "loss") losses++;
-		else ties++;
+		const withRate = scenarioRate(withArm.outcomesByCase.get(scenario.scenarioId));
+		const withoutRate = scenarioRate(withoutArm.outcomesByCase.get(scenario.scenarioId));
+		let outcome;
+		if (withRate === null || withoutRate === null) {
+			outcome = "unscored";
+			unscored++;
+		} else if (withRate > withoutRate) {
+			outcome = "win";
+			wins++;
+		} else if (withRate < withoutRate) {
+			outcome = "loss";
+			losses++;
+		} else {
+			outcome = "tie";
+			ties++;
+		}
 		byScenario[scenario.scenarioId] = { withRate, withoutRate, outcome };
 	}
-	const difference = Number(
-		((withArm.scenarioPassRate ?? 0) - (withoutArm.scenarioPassRate ?? 0)).toFixed(4),
-	);
-	const band = Math.max(withArm.noiseBand ?? 0, withoutArm.noiseBand ?? 0);
+	const difference =
+		withArm.scenarioPassRate === null || withoutArm.scenarioPassRate === null
+			? null
+			: Number((withArm.scenarioPassRate - withoutArm.scenarioPassRate).toFixed(4));
+	const significance = pairedSignTest(wins, losses, { alpha, minDecidedPairs });
 	const decided = wins + losses;
 	return {
 		difference,
 		wins,
 		losses,
 		ties,
+		unscored,
 		winShare: decided === 0 ? null : Number((wins / decided).toFixed(4)),
 		winShareInterval: wilsonInterval(wins, decided),
-		noiseBand: withArm.noiseBand === null && withoutArm.noiseBand === null ? null : band,
-		liftExceedsNoise:
+		significance,
+		liftSignificant: significance.significant && significance.direction === "with_better",
+		// Descriptive only: how often repeated trials of one arm disagreed.
+		noiseBand:
 			withArm.noiseBand === null && withoutArm.noiseBand === null
 				? null
-				: Math.abs(difference) > band,
+				: Math.max(withArm.noiseBand ?? 0, withoutArm.noiseBand ?? 0),
 		tokenDelta:
 			withArm.meanTokensPerScenario === null || withoutArm.meanTokensPerScenario === null
 				? null
 				: withArm.meanTokensPerScenario - withoutArm.meanTokensPerScenario,
 		byScenario,
+	};
+}
+
+/**
+ * Whether the run measured anything. With a built-in provider, a run with no
+ * completed call, or with more provider errors than allowed, is not evidence
+ * about the skill and must not pass.
+ */
+function runHealth(arms, { builtin, maxAdapterErrorShare }) {
+	const values = Object.values(arms);
+	const attempts = values.reduce((sum, arm) => sum + arm.scenarioRuns, 0);
+	const adapterErrors = values.reduce((sum, arm) => sum + arm.adapterErrors, 0);
+	const calls = values.reduce((sum, arm) => sum + arm.usage.calls, 0);
+	const adapterErrorShare = attempts === 0 ? null : Number((adapterErrors / attempts).toFixed(4));
+	const reasons = [];
+	if (builtin && calls === 0) reasons.push("no_provider_call_completed");
+	if (adapterErrorShare !== null && adapterErrorShare > maxAdapterErrorShare) reasons.push("adapter_error_share_exceeded");
+	return { attempts, adapterErrors, adapterErrorShare, maxAdapterErrorShare, calls, healthy: reasons.length === 0, reasons };
+}
+
+/** Top-level result over every trial of one arm, not the first trial only. */
+function overallResult(scenarios, trialRuns, arm) {
+	const trials = trialRuns.length;
+	const majority = (predicate) => trialRuns.filter(predicate).length * 2 > trials;
+	const trajectories = {};
+	const invokedSkills = {};
+	for (const scenario of scenarios) {
+		trajectories[scenario.scenarioId] = trialRuns.map((trial) => trial.run.trajectories[scenario.scenarioId] ?? null);
+		invokedSkills[scenario.scenarioId] = trialRuns.map((trial) => trial.run.invokedSkills[scenario.scenarioId] ?? null);
+	}
+	const mean = (select) => Number((trialRuns.reduce((sum, trial) => sum + (select(trial) ? 1 : 0), 0) / trials).toFixed(4));
+	return {
+		parsePassed: trialRuns.every((trial) => trial.run.parseFailures.length === 0),
+		parseFailures: trialRuns.flatMap((trial) => trial.run.parseFailures.map((failure) => ({ trial: trial.trial, ...failure }))),
+		adapterErrors: trialRuns.flatMap((trial) => trial.run.adapterErrors.map((failure) => ({ trial: trial.trial, ...failure }))),
+		trajectories,
+		invokedSkills,
+		score: {
+			arm,
+			aggregation: "majority_of_trials",
+			trials,
+			passed: majority((trial) => trial.score.passed),
+			decisionPassed: majority((trial) => trial.score.decisionPassed),
+			reportingPassed: majority((trial) => trial.score.reportingPassed),
+			passRate: mean((trial) => trial.score.passed),
+			decisionPassRate: mean((trial) => trial.score.decisionPassed),
+			reportingPassRate: mean((trial) => trial.score.reportingPassed),
+			byTrial: trialRuns.map((trial) => ({
+				trial: trial.trial,
+				passed: trial.score.passed,
+				decisionPassed: trial.score.decisionPassed,
+				reportingPassed: trial.score.reportingPassed,
+				decisionFailures: trial.score.decisionFailures,
+				reportingFailures: trial.score.reportingFailures,
+			})),
+		},
 	};
 }
 
@@ -522,7 +718,7 @@ async function run() {
 				continue;
 			}
 			const startedAt = Date.now();
-			const runResult = await runAdapter(adapter, scenarios, assembleSkillBundle());
+			const runResult = await runAdapter(adapter, scenarios, "with");
 			const score = scoreSkillEvaluation(scenarios, runResult.results);
 			reports.push({
 				metadata: adapter.metadata,
@@ -538,6 +734,7 @@ async function run() {
 				latencyMsByScenario: runResult.latencyMsByScenario,
 				trajectories: runResult.trajectories,
 				parseFailures: runResult.parseFailures,
+				adapterErrors: runResult.adapterErrors,
 				score,
 				scenarioCount: score.scenarioCount,
 				decisionPassed: score.decisionPassed,
@@ -617,36 +814,33 @@ async function run() {
 		return args.allowSkip ? 0 : 2;
 	}
 	const startedAt = Date.now();
-	const bundle = assembleSkillBundle();
 	const armNames = args.arm === "both" ? ["with", "without"] : [args.arm];
-	const armRuns = {};
-	for (const armName of armNames) {
-		armRuns[armName] = [];
-		for (let trial = 1; trial <= args.trials; trial++) {
-			const trialStartedAt = Date.now();
-			const runResult = await runAdapter(adapter, scenarios, bundle, armName);
-			armRuns[armName].push({
-				trial,
-				run: runResult,
-				score: scoreSkillEvaluation(scenarios, runResult.results),
-				latencyMs: Date.now() - trialStartedAt,
-			});
-		}
-	}
+	const armRuns = await runInterleaved(adapter, scenarios, armNames, args.trials);
 	const arms = Object.fromEntries(
 		Object.entries(armRuns).map(([name, trials]) => [name, summarizeArm(scenarios, trials)]),
 	);
 	const ablation =
-		arms.with && arms.without ? pairedComparison(scenarios, arms.with, arms.without) : undefined;
-	const primaryArm = armRuns.with ?? armRuns.without;
-	const first = primaryArm[0];
-	const gatingArm = arms.with ?? arms.without;
+		arms.with && arms.without
+			? pairedComparison(scenarios, arms.with, arms.without, {
+					alpha: args.alpha,
+					minDecidedPairs: args.minDecidedPairs,
+				})
+			: undefined;
+	const primaryName = armRuns.with ? "with" : "without";
+	const overall = overallResult(scenarios, armRuns[primaryName], primaryName);
+	const gatingArm = arms[primaryName];
 	const passRate = gatingArm.trialsPassed / gatingArm.trials;
+	const health = runHealth(arms, {
+		builtin: adapter.metadata.adapter === "builtin",
+		maxAdapterErrorShare: args.maxAdapterErrorShare,
+	});
+	const primaryBundle = assembleSkillBundle(primaryName);
 	console.log(
 		JSON.stringify({
-			schemaVersion: 2,
+			schemaVersion: 3,
 			mode: "live_adapter",
 			executed: true,
+			status: health.healthy ? "completed" : "unhealthy",
 			evidenceSource: "adapter",
 			distributionVersion,
 			skillCommit: skillCommit(),
@@ -656,29 +850,30 @@ async function run() {
 			model: adapter.metadata.model ?? "unknown",
 			loading: adapter.metadata.loading ?? "adapter_defined",
 			armsRun: armNames,
+			armOrder: "interleaved_alternating",
 			trials: args.trials,
 			minPassRate: args.minPassRate,
-			parsePassed: first.run.parseFailures.length === 0,
-			parseFailures: first.run.parseFailures,
-			promptHash: hash(bundle),
-			outputHash: hash(JSON.stringify(first.run.results)),
-			promptHashes: first.run.promptHashes,
-			outputHashes: first.run.outputHashes,
-			latencyMsByScenario: first.run.latencyMsByScenario,
-			trajectories: first.run.trajectories,
-			invokedSkills: first.run.invokedSkills,
+			health,
+			parsePassed: overall.parsePassed,
+			parseFailures: overall.parseFailures,
+			adapterErrors: overall.adapterErrors,
+			promptHash: hash(primaryBundle),
+			outputHash: hash(JSON.stringify(armRuns[primaryName].map((trial) => trial.run.results))),
+			trajectories: overall.trajectories,
+			invokedSkills: overall.invokedSkills,
 			latencyMs: Date.now() - startedAt,
 			costUsd: adapter.metadata.costUsd,
-			scenarioCount: first.score.scenarioCount,
-			decisionPassed: first.score.decisionPassed,
-			reportingPassed: first.score.reportingPassed,
-			score: first.score,
+			scenarioCount: scenarios.length,
+			decisionPassed: overall.score.decisionPassed,
+			reportingPassed: overall.score.reportingPassed,
+			score: overall.score,
 			arms: Object.fromEntries(
 				Object.entries(arms).map(([name, arm]) => [name, publicArm(arm)]),
 			),
 			ablation,
 		}),
 	);
+	if (!health.healthy) return 1;
 	return passRate >= args.minPassRate ? 0 : 1;
 }
 
